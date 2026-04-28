@@ -1,80 +1,29 @@
-Yes, **this method will work well**.
+Features:
 
-Your workflow should be:
+timestamp – Date and time of data collection
+solar_pv_output – Actual solar PV power output (kW)
+wind_power_output – Actual wind power output (kW)
+total_renewable_energy – Combined solar and wind power output (kW)
+solar_irradiance – Solar radiation intensity (W/m²)
+wind_speed – Wind speed (m/s)
+temperature – Ambient temperature (°C)
+humidity – Relative humidity (%)
+atmospheric_pressure – Atmospheric pressure (hPa)
+grid_load_demand – Power demand from the grid (kW)
+frequency – Grid frequency (Hz)
+voltage – Grid voltage (V)
+power_exchange – Power exchanged with the grid (kW)
+battery_state_of_charge – Battery charge level (%)
+battery_charging_rate – Battery charging rate (kW)
+battery_discharging_rate – Battery discharging rate (kW)
+hour_of_day – Hour of the day (0–23)
+day_of_week – Day of the week (0=Monday, 6=Sunday)
+Target Variables:
+predicted_solar_pv_output – Forecasted solar PV output (kW)
+predicted_wind_power_output – Forecasted wind power output (kW)
+total_predicted_energy – Combined forecasted renewable energy output (kW)
 
-```text
-Arch Linux local VS Code
-↓
-edit .ipynb / .py using Copilot
-↓
-test locally if needed
-↓
-git add .
-git commit
-git push
-↓
-Colab
-git clone / git pull
-↓
-run notebook or train.py
-```
 
-You may run into only these issues:
+these are our Variables
 
-| Issue                                 | Fix                                      |
-| ------------------------------------- | ---------------------------------------- |
-| CSV path not found                    | Use relative paths like `data/file.csv`  |
-| Colab starts in wrong folder          | Run `%cd repo-name`                      |
-| Python package missing                | Keep `requirements.txt`                  |
-| Notebook output causing Git conflicts | Clear notebook output before commit      |
-| Large dataset                         | Your 1.26 MB CSV is fine in GitHub       |
-| Local vs Colab library mismatch       | Install from `requirements.txt` in Colab |
-
-Use this folder structure:
-
-```text
-microgrid-project/
-├── data/
-│   └── microgrid.csv
-├── notebooks/
-│   └── experiment.ipynb
-├── src/
-│   ├── preprocessing.py
-│   ├── models.py
-│   └── train.py
-├── requirements.txt
-└── README.md
-```
-
-In notebook, don’t use absolute paths like:
-
-```python
-/home/amarjith/Desktop/microgrid/data/file.csv
-```
-
-Use this:
-
-```python
-import pandas as pd
-
-df = pd.read_csv("data/microgrid.csv")
-```
-
-In Colab first cell:
-
-```python
-import os
-
-repo = "microgrid-project"
-
-if not os.path.exists(repo):
-    !git clone https://github.com/YOUR_USERNAME/microgrid-project.git
-
-%cd microgrid-project
-!git pull
-!pip install -r requirements.txt
-```
-
-Then everything should work.
-
-Best practice: keep heavy logic in `.py` files and use notebook mainly as a runner/visualizer. But yes, **you can edit notebooks locally, push to GitHub, and run them in Colab.**
+we need to create cnn lstm xgboost hybrid, so need a plan in the actionplan folder named plan1.md
