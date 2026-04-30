@@ -69,7 +69,10 @@ def compute_metrics(target_columns: List[str], y_true: np.ndarray, y_pred: np.nd
 def main() -> None:
     print("Loading model artifacts...")
     config, feature_columns, scaler, xgb_models = load_artifacts()
+    print(f"Targets: {config.target_columns}")
+    print(f"Features: {feature_columns}")
 
+    print("Loading dataset...")
     df = pd.read_csv("data/microgrid.csv")
     train_df, val_df, test_df = chronological_split(df, config)
 
@@ -80,8 +83,10 @@ def main() -> None:
     if missing_features:
         raise ValueError(f"Missing required feature columns: {missing_features}")
 
+    print("Scaling test data...")
     test_df = apply_scaler(test_df, feature_columns, scaler)
 
+    print("Building test sequences...")
     x_test, y_test = create_sequences(
         test_df,
         feature_columns,
@@ -96,10 +101,12 @@ def main() -> None:
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
 
+    print("Extracting embeddings...")
     with torch.no_grad():
         x_tensor = torch.from_numpy(x_test).to(device)
         embeddings = model.extract_features(x_tensor).cpu().numpy()
 
+    print("Running XGBoost inference...")
     preds = []
     for model_xgb in xgb_models:
         preds.append(model_xgb.predict(embeddings))
@@ -110,9 +117,11 @@ def main() -> None:
 
     y_true = y_test if y_test.size else None
     predictions_df = build_prediction_dataframe(timestamps, config.target_columns, y_true, y_pred)
+    print("Saving predictions...")
     save_predictions(predictions_df)
 
     if y_true is not None:
+        print("Computing metrics...")
         metrics = compute_metrics(config.target_columns, y_true, y_pred)
         save_metrics(metrics)
 

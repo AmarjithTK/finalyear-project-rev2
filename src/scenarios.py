@@ -46,6 +46,7 @@ def run_scenarios() -> None:
 
     preds["timestamp"] = pd.to_datetime(preds["timestamp"])
     target_columns = _detect_target_columns(preds)
+    print(f"Detected targets: {target_columns}")
 
     scenarios_summary: Dict[str, Dict] = {}
 
@@ -58,6 +59,7 @@ def run_scenarios() -> None:
 
         if any(key in target.lower() for key in ["solar", "wind", "renewable", "energy"]):
             drop_mask = _find_sudden_drops(series, threshold=0.5)
+            print(f"{target}: sudden drop events = {int(drop_mask.sum())}")
             scenarios_summary[f"Scenario_Sudden_Drop_{target}"] = {
                 "description": "50%+ one-step drop in predicted output.",
                 "impact_assessment": "High" if drop_mask.any() else "Low",
@@ -67,6 +69,7 @@ def run_scenarios() -> None:
 
         if "load" in target.lower():
             surge_mask = _find_sudden_surges(series, threshold=0.2)
+            print(f"{target}: peak surge events = {int(surge_mask.sum())}")
             scenarios_summary[f"Scenario_Peak_Surge_{target}"] = {
                 "description": "20%+ one-step surge in predicted load.",
                 "impact_assessment": "Medium" if surge_mask.any() else "Low",

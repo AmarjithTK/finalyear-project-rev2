@@ -142,10 +142,18 @@ def main(config: Optional[DataConfig] = None) -> None:
     config = config or DEFAULT_CONFIG
     print(f"Config: {asdict(config)}")
 
+    print("Loading dataset...")
     df = pd.read_csv("data/microgrid.csv")
+    print(f"Rows loaded: {len(df)}")
+
+    print("Building dataloaders...")
     train_loader, val_loader, _, scaler, feature_columns = build_dataloaders(df, config)
 
+    print(f"Features: {feature_columns}")
+    print(f"Targets: {config.target_columns}")
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
     model = build_model(config, input_channels=len(feature_columns)).to(device)
     optimizer = Adam(model.parameters(), lr=1e-3)
     loss_fn = nn.MSELoss()
@@ -156,6 +164,7 @@ def main(config: Optional[DataConfig] = None) -> None:
     patience_counter = 0
     best_state = None
 
+    print("Starting CNN-LSTM pretraining...")
     for epoch in range(1, epochs + 1):
         train_loss = train_epoch(model, train_loader, optimizer, loss_fn, device)
         val_loss = eval_epoch(model, val_loader, loss_fn, device)
@@ -175,9 +184,11 @@ def main(config: Optional[DataConfig] = None) -> None:
     if best_state is not None:
         model.load_state_dict(best_state)
 
+    print("Extracting embeddings...")
     train_features, train_targets = extract_embeddings(model, train_loader, device)
     val_features, val_targets = extract_embeddings(model, val_loader, device)
 
+    print("Training XGBoost models...")
     xgb_models = []
     for target_idx, target_name in enumerate(config.target_columns):
         model_xgb = xgb.XGBRegressor(
@@ -198,7 +209,9 @@ def main(config: Optional[DataConfig] = None) -> None:
         xgb_models.append(model_xgb)
         print(f"XGBoost trained for target: {target_name}")
 
+    print("Saving hybrid models...")
     save_hybrid_model(model, xgb_models, scaler, config, feature_columns)
+    print("Training complete.")
 
 
 if __name__ == "__main__":
