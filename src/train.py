@@ -161,6 +161,10 @@ def _supports_ctor_early_stopping() -> bool:
         return False
 
 
+def _use_early_stopping() -> bool:
+    return os.getenv("XGB_EARLY_STOP", "0") == "1"
+
+
 def main(config: Optional[DataConfig] = None) -> None:
     config = config or DEFAULT_CONFIG
     print(f"Config: {asdict(config)}")
@@ -214,6 +218,7 @@ def main(config: Optional[DataConfig] = None) -> None:
     print("Training XGBoost models...")
     fit_supports_es = _supports_fit_early_stopping()
     ctor_supports_es = _supports_ctor_early_stopping()
+    enable_es = _use_early_stopping() and (fit_supports_es or ctor_supports_es)
     xgb_models = []
     for target_idx, target_name in enumerate(config.target_columns):
         base_params = dict(
@@ -225,14 +230,14 @@ def main(config: Optional[DataConfig] = None) -> None:
             objective="reg:squarederror",
         )
 
-        if fit_supports_es:
+        if enable_es and fit_supports_es:
             model_xgb = xgb.XGBRegressor(**base_params)
             fit_kwargs = {
                 "eval_set": [(val_features, val_targets[:, target_idx])],
                 "verbose": False,
                 "early_stopping_rounds": 30,
             }
-        elif ctor_supports_es:
+        elif enable_es and ctor_supports_es:
             model_xgb = xgb.XGBRegressor(**base_params, early_stopping_rounds=30)
             fit_kwargs = {
                 "eval_set": [(val_features, val_targets[:, target_idx])],
