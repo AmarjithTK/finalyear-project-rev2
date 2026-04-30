@@ -105,3 +105,45 @@ We feed these extracted **embeddings** (along with any other static features lik
 - Ensure the notebook cleanly executes the `.py` scripts (using `!python src/train.py`, etc.).
 - Load the JSONs and CSVs from `outputs/`.
 - Plot final visualizations and print the scenario tables cleanly for your final report.
+
+---
+
+## 5. Flexibility Plan (Variable Columns / Different Datasets)
+
+**Goal:** Make the pipeline resilient to different CSV schemas (solar-only, wind-only, missing battery, bus-wise loads, etc.) while keeping a minimal file structure.
+
+**A. Configuration-Driven Features**
+- Maintain a single config dictionary in `utils.py` (or a compact `config.py` if it grows) that defines:
+	- `target_columns` (what to predict)
+	- `feature_columns` (what to use as inputs)
+	- `optional_columns` (use if present, ignore if missing)
+	- `time_column` (timestamp column name)
+	- `horizon`, `look_back`, `frequency`
+
+**B. Automatic Schema Validation**
+- Add a `validate_schema(df, config)` function that:
+	- Confirms all required columns exist.
+	- Logs which optional columns are missing.
+	- Warns if target columns accidentally appear in features (leakage guard).
+
+**C. Flexible Dataset Loading**
+- The data loader should accept a `config` object and:
+	- Dynamically assemble `feature_columns` based on the CSV.
+	- Drop columns that are not in the config.
+	- Support datasets without battery or solar by using only the available features.
+
+**D. Model Shape Adaptation**
+- CNN input channels should be derived from `len(feature_columns)`.
+- Output dimension should be derived from `len(target_columns)`.
+- If predicting multiple targets, train one XGBoost model per target (clean and stable) unless multi-output is needed later.
+
+**E. Minimal Modular Files**
+- Keep everything in `utils.py` and `train.py` unless it becomes too large.
+- If the configuration grows, add **one** file `src/config.py` and import it everywhere.
+- If the model class grows, add **one** file `src/model_defs.py` and keep all network classes there.
+
+**F. Example Config Shapes**
+- **Solar-only dataset:** targets = `solar_pv_output`, features = `solar_irradiance`, `temperature`, `humidity`, `hour_of_day`, `day_of_week`.
+- **Wind-only dataset:** targets = `wind_power_output`, features = `wind_speed`, `atmospheric_pressure`, `temperature`, `hour_of_day`, `day_of_week`.
+- **No battery columns:** ignore battery features entirely; no change in pipeline required.
+- **Bus-wise load dataset:** define `target_columns` as `load_bus_1`, `load_bus_2`, ... and train one XGBoost per bus.
