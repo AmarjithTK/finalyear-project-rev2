@@ -68,6 +68,11 @@ def compute_metrics(target_columns: List[str], y_true: np.ndarray, y_pred: np.nd
         error = predicted - actual
         abs_error = np.abs(error)
         squared_error = np.square(error)
+        mae = mean_absolute_error(actual, predicted)
+        mse = mean_squared_error(actual, predicted)
+        rmse = np.sqrt(mse)
+        actual_mean = np.mean(np.abs(actual))
+        actual_range = np.max(actual) - np.min(actual)
         nonzero_mask = actual != 0
         mape = np.nan
         if np.any(nonzero_mask):
@@ -80,13 +85,17 @@ def compute_metrics(target_columns: List[str], y_true: np.ndarray, y_pred: np.nd
             smape = np.mean((2 * abs_error[smape_mask]) / smape_denominator[smape_mask]) * 100
 
         metrics[name] = {
-            "MAE": float(mean_absolute_error(actual, predicted)),
-            "MSE": float(mean_squared_error(actual, predicted)),
-            "RMSE": float(np.sqrt(mean_squared_error(actual, predicted))),
-            "MedianAE": float(np.median(abs_error)),
-            "MaxAE": float(np.max(abs_error)),
+            "MAE_percent_of_mean": float((mae / actual_mean) * 100) if actual_mean else float("nan"),
+            "RMSE_percent_of_mean": float((rmse / actual_mean) * 100) if actual_mean else float("nan"),
+            "NRMSE_percent_of_range": float((rmse / actual_range) * 100) if actual_range else float("nan"),
             "MAPE_percent": float(mape),
             "sMAPE_percent": float(smape),
+            "Bias_percent_of_mean": float((np.mean(error) / actual_mean) * 100) if actual_mean else float("nan"),
+            "MAE": float(mae),
+            "MSE": float(mse),
+            "RMSE": float(rmse),
+            "MedianAE": float(np.median(abs_error)),
+            "MaxAE": float(np.max(abs_error)),
             "MBE": float(np.mean(error)),
             "Error_STD": float(np.std(error)),
             "Mean_Squared_Error": float(np.mean(squared_error)),
