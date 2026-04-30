@@ -136,6 +136,12 @@ We feed these extracted **embeddings** (along with any other static features lik
 - CNN input channels should be derived from `len(feature_columns)`.
 - Output dimension should be derived from `len(target_columns)`.
 - If predicting multiple targets, train one XGBoost model per target (clean and stable) unless multi-output is needed later.
+- For the final microgrid pipeline, keep the model targets fixed to:
+	- `grid_load_demand`
+	- `solar_pv_output`
+	- `wind_power_output`
+- Derive `total_predicted_energy` after inference as `predicted_solar_pv_output + predicted_wind_power_output`; do not train XGBoost on this as an extra target.
+- Use the three forecasts plus derived renewable total as the input layer for modified IEEE 13-bus hourly load-flow analysis.
 
 **E. Minimal Modular Files**
 - Keep everything in `utils.py` and `train.py` unless it becomes too large.

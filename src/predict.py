@@ -46,6 +46,32 @@ def load_artifacts(model_dir: str = MODEL_DIR) -> Tuple[DataConfig, List[str], o
     return config, feature_columns, scaler, xgb_models
 
 
+def add_derived_energy_columns(df: pd.DataFrame) -> pd.DataFrame:
+    result = df.copy()
+    solar_pred = "predicted_solar_pv_output"
+    wind_pred = "predicted_wind_power_output"
+    load_pred = "predicted_grid_load_demand"
+    solar_actual = "actual_solar_pv_output"
+    wind_actual = "actual_wind_power_output"
+    load_actual = "actual_grid_load_demand"
+
+    if solar_pred in result.columns and wind_pred in result.columns:
+        result["total_predicted_energy"] = result[solar_pred] + result[wind_pred]
+
+    if solar_actual in result.columns and wind_actual in result.columns:
+        result["actual_total_renewable_energy"] = result[solar_actual] + result[wind_actual]
+
+    if "total_predicted_energy" in result.columns and load_pred in result.columns:
+        result["net_grid_balance_predicted"] = result["total_predicted_energy"] - result[load_pred]
+        result["grid_import_predicted"] = (-result["net_grid_balance_predicted"]).clip(lower=0)
+        result["grid_export_predicted"] = result["net_grid_balance_predicted"].clip(lower=0)
+
+    if "actual_total_renewable_energy" in result.columns and load_actual in result.columns:
+        result["net_grid_balance_actual"] = result["actual_total_renewable_energy"] - result[load_actual]
+
+    return result
+
+
 def build_prediction_dataframe(
     timestamps: pd.Series,
     target_columns: List[str],
@@ -57,50 +83,62 @@ def build_prediction_dataframe(
         if y_true is not None:
             result[f"actual_{name}"] = y_true[:, idx]
         result[f"predicted_{name}"] = y_pred[:, idx]
-    return result
+    return add_derived_energy_columns(result)
+
+
+def _metric_block(actual: np.ndarray, predicted: np.ndarray) -> Dict[str, float]:
+    error = predicted - actual
+    abs_error = np.abs(error)
+    squared_error = np.square(error)
+    mae = mean_absolute_error(actual, predicted)
+    mse = mean_squared_error(actual, predicted)
+    rmse = np.sqrt(mse)
+    actual_mean = np.mean(np.abs(actual))
+    actual_range = np.max(actual) - np.min(actual)
+    nonzero_mask = actual != 0
+    mape = np.nan
+    if np.any(nonzero_mask):
+        mape = np.mean(abs_error[nonzero_mask] / np.abs(actual[nonzero_mask])) * 100
+
+    smape_denominator = np.abs(actual) + np.abs(predicted)
+    smape_mask = smape_denominator != 0
+    smape = np.nan
+    if np.any(smape_mask):
+        smape = np.mean((2 * abs_error[smape_mask]) / smape_denominator[smape_mask]) * 100
+
+    return {
+        "MAE_percent_of_mean": float((mae / actual_mean) * 100) if actual_mean else float("nan"),
+        "RMSE_percent_of_mean": float((rmse / actual_mean) * 100) if actual_mean else float("nan"),
+        "NRMSE_percent_of_range": float((rmse / actual_range) * 100) if actual_range else float("nan"),
+        "MAPE_percent": float(mape),
+        "sMAPE_percent": float(smape),
+        "Bias_percent_of_mean": float((np.mean(error) / actual_mean) * 100) if actual_mean else float("nan"),
+        "MAE": float(mae),
+        "MSE": float(mse),
+        "RMSE": float(rmse),
+        "MedianAE": float(np.median(abs_error)),
+        "MaxAE": float(np.max(abs_error)),
+        "MBE": float(np.mean(error)),
+        "Error_STD": float(np.std(error)),
+        "Mean_Squared_Error": float(np.mean(squared_error)),
+        "R2": float(r2_score(actual, predicted)),
+    }
 
 
 def compute_metrics(target_columns: List[str], y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, Dict[str, float]]:
     metrics: Dict[str, Dict[str, float]] = {}
+    target_indices = {name: idx for idx, name in enumerate(target_columns)}
+
     for idx, name in enumerate(target_columns):
-        actual = y_true[:, idx]
-        predicted = y_pred[:, idx]
-        error = predicted - actual
-        abs_error = np.abs(error)
-        squared_error = np.square(error)
-        mae = mean_absolute_error(actual, predicted)
-        mse = mean_squared_error(actual, predicted)
-        rmse = np.sqrt(mse)
-        actual_mean = np.mean(np.abs(actual))
-        actual_range = np.max(actual) - np.min(actual)
-        nonzero_mask = actual != 0
-        mape = np.nan
-        if np.any(nonzero_mask):
-            mape = np.mean(abs_error[nonzero_mask] / np.abs(actual[nonzero_mask])) * 100
+        metrics[name] = _metric_block(y_true[:, idx], y_pred[:, idx])
 
-        smape_denominator = np.abs(actual) + np.abs(predicted)
-        smape_mask = smape_denominator != 0
-        smape = np.nan
-        if np.any(smape_mask):
-            smape = np.mean((2 * abs_error[smape_mask]) / smape_denominator[smape_mask]) * 100
-
-        metrics[name] = {
-            "MAE_percent_of_mean": float((mae / actual_mean) * 100) if actual_mean else float("nan"),
-            "RMSE_percent_of_mean": float((rmse / actual_mean) * 100) if actual_mean else float("nan"),
-            "NRMSE_percent_of_range": float((rmse / actual_range) * 100) if actual_range else float("nan"),
-            "MAPE_percent": float(mape),
-            "sMAPE_percent": float(smape),
-            "Bias_percent_of_mean": float((np.mean(error) / actual_mean) * 100) if actual_mean else float("nan"),
-            "MAE": float(mae),
-            "MSE": float(mse),
-            "RMSE": float(rmse),
-            "MedianAE": float(np.median(abs_error)),
-            "MaxAE": float(np.max(abs_error)),
-            "MBE": float(np.mean(error)),
-            "Error_STD": float(np.std(error)),
-            "Mean_Squared_Error": float(np.mean(squared_error)),
-            "R2": float(r2_score(actual, predicted)),
-        }
+    renewable_targets = ["solar_pv_output", "wind_power_output"]
+    if all(target in target_indices for target in renewable_targets):
+        renewable_indices = [target_indices[target] for target in renewable_targets]
+        metrics["total_predicted_energy"] = _metric_block(
+            y_true[:, renewable_indices].sum(axis=1),
+            y_pred[:, renewable_indices].sum(axis=1),
+        )
     return metrics
 
 

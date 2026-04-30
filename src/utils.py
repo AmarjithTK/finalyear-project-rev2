@@ -35,7 +35,11 @@ class DataConfig:
 
 DEFAULT_CONFIG = DataConfig(
     time_column="timestamp",
-    target_columns=["total_renewable_energy"],
+    target_columns=[
+        "grid_load_demand",
+        "solar_pv_output",
+        "wind_power_output",
+    ],
     feature_columns=[
         "solar_irradiance",
         "wind_speed",
@@ -49,8 +53,6 @@ DEFAULT_CONFIG = DataConfig(
         "battery_state_of_charge",
         "battery_charging_rate",
         "battery_discharging_rate",
-        "solar_pv_output",
-        "wind_power_output",
     ],
     look_back=24,
     horizon=1,
