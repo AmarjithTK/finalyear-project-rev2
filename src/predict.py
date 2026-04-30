@@ -65,7 +65,7 @@ def compute_metrics(target_columns: List[str], y_true: np.ndarray, y_pred: np.nd
     for idx, name in enumerate(target_columns):
         metrics[name] = {
             "MAE": float(mean_absolute_error(y_true[:, idx], y_pred[:, idx])),
-            "RMSE": float(mean_squared_error(y_true[:, idx], y_pred[:, idx], squared=False)),
+            "RMSE": float(np.sqrt(mean_squared_error(y_true[:, idx], y_pred[:, idx]))),
             "R2": float(r2_score(y_true[:, idx], y_pred[:, idx])),
         }
     return metrics

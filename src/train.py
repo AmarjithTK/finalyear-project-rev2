@@ -6,7 +6,6 @@ import os
 import sys
 from dataclasses import asdict
 from typing import List, Optional, Tuple
-import inspect
 
 import numpy as np
 import pandas as pd
@@ -145,24 +144,8 @@ def extract_embeddings(
     return np.concatenate(features, axis=0), np.concatenate(targets, axis=0)
 
 
-def _supports_fit_early_stopping() -> bool:
-    try:
-        params = inspect.signature(xgb.XGBRegressor.fit).parameters
-        return "early_stopping_rounds" in params
-    except (TypeError, ValueError):
-        return False
-
-
-def _supports_ctor_early_stopping() -> bool:
-    try:
-        params = inspect.signature(xgb.XGBRegressor.__init__).parameters
-        return "early_stopping_rounds" in params
-    except (TypeError, ValueError):
-        return False
-
-
 def _use_early_stopping() -> bool:
-    return os.getenv("XGB_EARLY_STOP", "0") == "1"
+    return os.getenv("XGB_EARLY_STOP", "0").lower() in {"1", "true", "yes"}
 
 
 def main(config: Optional[DataConfig] = None) -> None:
@@ -216,9 +199,7 @@ def main(config: Optional[DataConfig] = None) -> None:
     val_features, val_targets = extract_embeddings(model, val_loader, device)
 
     print("Training XGBoost models...")
-    fit_supports_es = _supports_fit_early_stopping()
-    ctor_supports_es = _supports_ctor_early_stopping()
-    enable_es = _use_early_stopping() and (fit_supports_es or ctor_supports_es)
+    enable_es = _use_early_stopping()
     xgb_models = []
     for target_idx, target_name in enumerate(config.target_columns):
         base_params = dict(
@@ -229,33 +210,26 @@ def main(config: Optional[DataConfig] = None) -> None:
             colsample_bytree=0.8,
             objective="reg:squarederror",
         )
+        if enable_es:
+            # Newer XGBoost releases removed early_stopping_rounds from fit().
+            # Passing it through the constructor works across the sklearn wrapper API.
+            base_params["early_stopping_rounds"] = 30
 
-        if enable_es and fit_supports_es:
+        try:
             model_xgb = xgb.XGBRegressor(**base_params)
-            fit_kwargs = {
-                "eval_set": [(val_features, val_targets[:, target_idx])],
-                "verbose": False,
-                "early_stopping_rounds": 30,
-            }
-        elif enable_es and ctor_supports_es:
-            model_xgb = xgb.XGBRegressor(**base_params, early_stopping_rounds=30)
-            fit_kwargs = {
-                "eval_set": [(val_features, val_targets[:, target_idx])],
-                "verbose": False,
-            }
-        else:
+        except TypeError:
+            base_params.pop("early_stopping_rounds", None)
             model_xgb = xgb.XGBRegressor(**base_params)
-            fit_kwargs = {
-                "eval_set": [(val_features, val_targets[:, target_idx])],
-                "verbose": False,
-            }
+        fit_kwargs = {
+            "eval_set": [(val_features, val_targets[:, target_idx])],
+            "verbose": False,
+        }
 
         try:
             model_xgb.fit(train_features, train_targets[:, target_idx], **fit_kwargs)
         except TypeError:
-            print("XGBoost early stopping unsupported; retrying without it.")
-            fit_kwargs.pop("early_stopping_rounds", None)
-            model_xgb.fit(train_features, train_targets[:, target_idx], **fit_kwargs)
+            print("XGBoost fit kwargs unsupported; retrying without validation logging.")
+            model_xgb.fit(train_features, train_targets[:, target_idx])
         xgb_models.append(model_xgb)
         print(f"XGBoost trained for target: {target_name}")
 

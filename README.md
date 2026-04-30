@@ -4,7 +4,7 @@ This project is designed to run in Colab with a clear, repeatable sequence.
 
 ### Recommended Sequence
 1. Open `main.ipynb` in Colab.
-2. In Cell 1, keep `colabrun = True` so the repo is cloned and `basedir` is set.
+2. Run Cell 1. It auto-detects Colab, clones the repo into `/content/finalyear-project-rev2`, and sets `basedir`.
 3. (Optional) Install dependencies with:
 	- `!pip install -r {basedir}requirements.txt`
 4. Run the training pipeline cell to execute:
