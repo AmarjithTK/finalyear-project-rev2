@@ -63,10 +63,34 @@ def build_prediction_dataframe(
 def compute_metrics(target_columns: List[str], y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, Dict[str, float]]:
     metrics: Dict[str, Dict[str, float]] = {}
     for idx, name in enumerate(target_columns):
+        actual = y_true[:, idx]
+        predicted = y_pred[:, idx]
+        error = predicted - actual
+        abs_error = np.abs(error)
+        squared_error = np.square(error)
+        nonzero_mask = actual != 0
+        mape = np.nan
+        if np.any(nonzero_mask):
+            mape = np.mean(abs_error[nonzero_mask] / np.abs(actual[nonzero_mask])) * 100
+
+        smape_denominator = np.abs(actual) + np.abs(predicted)
+        smape_mask = smape_denominator != 0
+        smape = np.nan
+        if np.any(smape_mask):
+            smape = np.mean((2 * abs_error[smape_mask]) / smape_denominator[smape_mask]) * 100
+
         metrics[name] = {
-            "MAE": float(mean_absolute_error(y_true[:, idx], y_pred[:, idx])),
-            "RMSE": float(np.sqrt(mean_squared_error(y_true[:, idx], y_pred[:, idx]))),
-            "R2": float(r2_score(y_true[:, idx], y_pred[:, idx])),
+            "MAE": float(mean_absolute_error(actual, predicted)),
+            "MSE": float(mean_squared_error(actual, predicted)),
+            "RMSE": float(np.sqrt(mean_squared_error(actual, predicted))),
+            "MedianAE": float(np.median(abs_error)),
+            "MaxAE": float(np.max(abs_error)),
+            "MAPE_percent": float(mape),
+            "sMAPE_percent": float(smape),
+            "MBE": float(np.mean(error)),
+            "Error_STD": float(np.std(error)),
+            "Mean_Squared_Error": float(np.mean(squared_error)),
+            "R2": float(r2_score(actual, predicted)),
         }
     return metrics
 
