@@ -2,9 +2,15 @@
 Derives microgrid risk scenarios from model predictions.
 """
 
+import os
+import sys
 from typing import Dict, List
 
 import pandas as pd
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 from src.utils import save_scenarios
 

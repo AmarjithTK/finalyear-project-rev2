@@ -5,6 +5,7 @@ predictions/metrics to the outputs folder.
 
 import json
 import os
+import sys
 from typing import Dict, List, Tuple
 
 import joblib
@@ -13,6 +14,10 @@ import pandas as pd
 import torch
 import xgboost as xgb
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 from src.train import build_model
 from src.utils import (

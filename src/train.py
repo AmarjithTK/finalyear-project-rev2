@@ -2,6 +2,8 @@
 Defines and pre-trains the CNN-LSTM feature extractor used in the hybrid pipeline.
 """
 
+import os
+import sys
 from dataclasses import asdict
 from typing import List, Optional, Tuple
 
@@ -11,6 +13,10 @@ import torch
 import torch.nn as nn
 import xgboost as xgb
 from torch.optim import Adam
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 from src.utils import DataConfig, DEFAULT_CONFIG, build_dataloaders, save_hybrid_model
 
