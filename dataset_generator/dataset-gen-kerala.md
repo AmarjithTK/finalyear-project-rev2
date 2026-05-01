@@ -40,7 +40,7 @@ Does not follow a clean time curve. Uses daily wind speed with hourly random var
 
 ## 4. Load Modeling (4 MW Peak)
 
-The 4 MW peak load is split into four distinct sectors to simulate a realistic Indian/Kerala feeder. Each sector has its own hourly activity profile.
+The 4 MW peak load is split into distinct sectors to simulate a realistic Indian/Kerala feeder. We present two alternative narratives for the final 10% sector, leaving the choice to the faculty depending on the project's ultimate focus:
 
 1.  **Residential (40% - 1.6 MW Peak)**
     *   Profile: Medium morning/night, low day, **strong evening peak**.
@@ -48,8 +48,14 @@ The 4 MW peak load is split into four distinct sectors to simulate a realistic I
     *   Profile: High morning, **steady high day**, slight drop evening, low/off night.
 3.  **Commercial (20% - 0.8 MW Peak)**
     *   Profile: Rising morning, **high day peak**, medium evening, near zero night.
-4.  **Critical (10% - 0.4 MW Peak)**
-    *   Profile: **Constant 24h** flat line (e.g., hospitals, telecom).
+
+**Option A: Agricultural (10% - 0.4 MW Peak) - *Best for General Microgrid Studies***
+*   *Feeder Narrative:* A mixed semi-urban/rural Kerala feeder supplying irrigation pumps and farm loads.
+*   *Profile:* Off-peak operation, **high night and early morning**.
+
+**Option B: Critical (10% - 0.4 MW Peak) - *Best for Resilience/Islanding Studies***
+*   *Feeder Narrative:* An urban or high-priority feeder focusing on resilience, backup generation, or load-shedding priority (hospitals, telecom).
+*   *Profile:* **Constant 24h** flat line.
 
 **Weather Influence on Load:**
 Hot and humid weather increases cooling loads. This factor is applied to the aggregate or residential/commercial loads.
@@ -64,7 +70,7 @@ The generated hourly data will be distributed across the standard IEEE 13-node t
     *   Residential: `Bus 634`
     *   Industrial: `Bus 671`
     *   Commercial: `Bus 684`
-    *   Critical: `Bus 692`
+    *   Agri/Critical (Faculty Choice): `Bus 692`
 *   **DERs:**
     *   Solar: `Bus 675`
     *   Wind: `Bus 680`
@@ -90,10 +96,10 @@ If we include OpenDSS anomaly labels in the training dataset, it confuses the ob
 
 The finalized hourly dataset should only contain the fundamental values required for time-series forecasting, leaving the anomaly detection to the post-prediction OpenDSS phase. It should look like this:
 
-| timestamp | temperature (°C) | humidity (%) | wind_speed (m/s) | cloud_cover (%) | solar_irradiance (W/m²) | residential_load_MW | commercial_load_MW | industrial_load_MW | critical_load_MW | solar_MW | wind_MW |
+| timestamp | temperature (°C) | humidity (%) | wind_speed (m/s) | cloud_cover (%) | solar_irradiance (W/m²) | residential_load_MW | commercial_load_MW | industrial_load_MW | agri_or_critical_load_MW | solar_MW | wind_MW |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 2019-01-01 00:00 | 25 | 80 | 4.2 | 10 | 0 | 0.8 | 0 | 0.3 | 0.4 | 0 | 0.1 |
-| 2019-01-01 12:00 | 32 | 60 | 6.5 | 20 | 850 | 0.6 | 0.8 | 1.2 | 0.4 | 0.9 | 0.3 |
-| 2019-01-01 19:00 | 28 | 75 | 3.1 | 50 | 0 | 1.5 | 0.6 | 1.0 | 0.4 | 0 | 0 |
+| 2019-01-01 12:00 | 32 | 60 | 6.5 | 20 | 850 | 0.6 | 0.8 | 1.2 | 0.0 or 0.4 | 0.9 | 0.3 |
+| 2019-01-01 19:00 | 28 | 75 | 3.1 | 50 | 0 | 1.5 | 0.6 | 1.0 | 0.0 or 0.4 | 0 | 0 |
 
 This table provides the fundamental **weather backbone** and the derived **hourly profiles** for loads and DER generation. OpenDSS will strictly be used *after* the ML prediction phase to test the stability of the forecasted microgrid behavior.
