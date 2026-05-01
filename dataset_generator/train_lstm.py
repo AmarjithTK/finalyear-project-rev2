@@ -131,3 +131,10 @@ print(f"Mean Squared Error (MSE):  {mse:.5f}")
 print(f"Root Mean Sq Error (RMSE): {rmse:.5f}")
 print(f"Mean Absolute Error (MAE): {mae:.5f}")
 
+# --- 8. Save Model ---
+print("\nSaving model to 'lstm_model.pth'...")
+torch.save(model.state_dict(), 'lstm_model.pth')
+import joblib
+joblib.dump(scaler, 'scaler.joblib')
+print("Model and Scaler saved successfully!")
+

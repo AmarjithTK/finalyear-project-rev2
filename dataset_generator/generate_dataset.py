@@ -42,7 +42,11 @@ def generate_hourly_data(row, hour):
     humidity = row['humidity'] + np.random.uniform(-5, 5)
     humidity = min(100, max(0, humidity))
     
-    wind_speed = row['wind_speed'] + np.random.uniform(-1, 1)
+    # Kerala coastal/monsoon-style winds often have a daytime sea-breeze lift.
+    # Keep the daily source signal, but raise hourly values above turbine cut-in
+    # often enough for wind generation to be a meaningful ML target.
+    sea_breeze_boost = 1.6 + 1.4 * max(0, math.sin(math.pi * (hour - 6) / 14))
+    wind_speed = row['wind_speed'] + sea_breeze_boost + np.random.uniform(-0.8, 1.4)
     wind_speed = max(0, wind_speed)
     
     cloud_cover = row['cloud_cover'] + np.random.uniform(-5, 5)
@@ -72,16 +76,44 @@ def generate_hourly_data(row, hour):
     else:
         wind_MW = 0.0
 
+    # 3.5 Generation Drops (Grid Chaos)
+    # ~2% chance per daytime hour for extreme localized cloud cover dropping solar by 40-80%
+    if 7 <= hour <= 17 and np.random.random() < 0.02:
+        solar_MW *= np.random.uniform(0.20, 0.60)
+        
+    # ~1% chance per hour for brief localized turbine curtailment/wind stall cutting power by 30-70%
+    if np.random.random() < 0.01:
+        wind_MW *= np.random.uniform(0.30, 0.70)
+
     # 4. Weather Impact on Load
     # Hot and humid weather increases cooling/AC loads
     weather_factor = 1 + 0.01 * max(temp - 28, 0) + 0.002 * max(humidity - 70, 0)
 
-    # 5. Load Generation
-    res_MW = PEAK_RES * res_profile[hour] * weather_factor
-    com_MW = PEAK_COM * com_profile[hour] * weather_factor
-    ind_MW = PEAK_IND * ind_profile[hour] * weather_factor
+    # 5. Load Generation (with Base Sensor & Behavioral Fuzz)
+    # Applying Gaussian noise (normal distribution) to simulate real-world micro-fluctuations
+    res_noise = np.random.normal(1.0, 0.04) # ~4% standard deviation for homes
+    com_noise = np.random.normal(1.0, 0.02) # ~2% standard dev for commercial
+    ind_noise = np.random.normal(1.0, 0.02) # ~2% standard dev for industrial
+    crit_noise = np.random.normal(1.0, 0.01) # Hospital/critical is very stable
+
+    res_MW = PEAK_RES * res_profile[hour] * weather_factor * res_noise
+    com_MW = PEAK_COM * com_profile[hour] * weather_factor * com_noise
+    ind_MW = PEAK_IND * ind_profile[hour] * weather_factor * ind_noise
     # Critical loads typically don't scale strongly with weather, keeping it flat
-    crit_MW = PEAK_CRIT * crit_profile[hour]
+    crit_MW = PEAK_CRIT * crit_profile[hour] * crit_noise
+
+    # 6. Sudden Discrete Grid Spikes (Anomalies)
+    # ~1% chance per hour for a factory turning on heavy machinery (Industrial Spike)
+    if np.random.random() < 0.01:
+        ind_MW *= np.random.uniform(1.20, 1.40)  # +20% to +40% load spike
+
+    # ~1.5% chance per hour during evenings (17:00-22:00) for EV fleet charging surge (Residential)
+    if 17 <= hour <= 22 and np.random.random() < 0.015:
+        res_MW *= np.random.uniform(1.25, 1.50)  # +25% to +50% load spike
+
+    # ~0.5% afternoon chance for massive Commercial HVAC/Chiller compressor surge
+    if 10 <= hour <= 16 and np.random.random() < 0.005:
+        com_MW *= np.random.uniform(1.15, 1.30)  # +15% to +30% load spike
 
     # Format timestamp
     timestamp = f"{row['date']} {hour:02d}:00"
@@ -98,7 +130,7 @@ def generate_hourly_data(row, hour):
         'industrial_load_MW': round(ind_MW, 3),
         'critical_load_MW': round(crit_MW, 3),
         'solar_MW': round(solar_MW, 3),
-        'wind_MW': round(wind_MW, 3)
+        'wind_MW': round(wind_MW, 6)
     }
 
 def main():

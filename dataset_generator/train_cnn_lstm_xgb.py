@@ -143,3 +143,12 @@ print("\n--- Summary of CNN-LSTM-XGBoost Predictions ---")
 print(f"Mean Squared Error (MSE):  {mse:.5f}")
 print(f"Root Mean Sq Error (RMSE): {rmse:.5f}")
 print(f"Mean Absolute Error (MAE): {mae:.5f}")
+
+# --- 9. Save Models ---
+print("\nSaving Base PyTorch model and XGBoost MultiOutputRegressor...")
+import joblib
+import torch
+torch.save(base_model.state_dict(), 'cnn_lstm_base_model.pth')
+joblib.dump(xgb_model, 'xgb_model.joblib')
+joblib.dump(scaler, 'scaler.joblib')
+print("Models and Scaler saved successfully!")
