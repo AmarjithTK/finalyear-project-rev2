@@ -12,23 +12,16 @@ SEQ_LENGTH = 24  # Use 24 hours of history to predict the next hour
 BATCH_SIZE = 32
 HIDDEN_SIZE = 64
 NUM_LAYERS = 2
-EPOCHS = 10
+EPOCHS = 30
 LEARNING_RATE = 0.001
-START_DATE = '2023-01-01'
-END_DATE = '2024-01-01'
 
-# --- 2. Load and Filter Data ---
+# --- 2. Load Data ---
 print("Loading dataset...")
 df = pd.read_csv(DATA_FILE)
 df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-# Filter data to defined timeline
-mask = (df['timestamp'] >= START_DATE) & (df['timestamp'] <= END_DATE)
-df_filtered = df.loc[mask].copy()
-
-if df_filtered.empty:
-    print("Warning: No data found for 2023-2024. Using the entire dataset instead.")
-    df_filtered = df.copy()
+# Use the full dataset timeline
+df_filtered = df.copy()
 
 # Ensure chronological order
 df_filtered = df_filtered.sort_values(by='timestamp').reset_index(drop=True)
