@@ -1,0 +1,19 @@
+! ----------------------------------------------------
+! Kerala 11kV Feeder - Line Definitions (Topology)
+! ----------------------------------------------------
+
+! Main Backbone (Source -> Bus 650 -> Bus 632 -> Bus 671)
+! Using heavy capacity 'Dog' and 'Raccoon' conductors
+New Line.L_Source_650 Phases=3 Bus1=SourceBus Bus2=650 LineCode=Dog Length=2.5 units=km
+New Line.L_650_632    Phases=3 Bus1=650       Bus2=632 LineCode=Dog Length=1.8 units=km
+New Line.L_632_671    Phases=3 Bus1=632       Bus2=671 LineCode=Raccoon Length=2.0 units=km
+
+! Branches / Spurs
+! Bus 632 feeds Residential (634) and Solar PV node (675)
+New Line.L_632_634    Phases=3 Bus1=632       Bus2=634 LineCode=Rabbit Length=1.2 units=km
+New Line.L_632_675    Phases=3 Bus1=632       Bus2=675 LineCode=Rabbit Length=0.8 units=km
+
+! Bus 671 feeds Industrial (671 directly), Wind (680), Commercial (684), and Critical (692)
+New Line.L_671_680    Phases=3 Bus1=671       Bus2=680 LineCode=Raccoon Length=1.5 units=km
+New Line.L_671_684    Phases=3 Bus1=671       Bus2=684 LineCode=Raccoon Length=1.0 units=km
+New Line.L_671_692    Phases=3 Bus1=671       Bus2=692 LineCode=Rabbit  Length=0.5 units=km

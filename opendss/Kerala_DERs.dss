@@ -1,0 +1,14 @@
+! ----------------------------------------------------
+! Kerala 11kV Feeder - Distributed Energy Resources (DERs)
+! ----------------------------------------------------
+
+! 1. Utility-Scale Solar PV at Bus 675 (e.g., KSEB ground-mounted or aggregate roof-top)
+! Placed directly at 11kV or via its own step-up transformer. We'll connect directly at 11kV for simplicity.
+! Rated 250 kVA
+New Generator.PV_675 Phases=3 Bus1=675 kV=11 kW=200 PF=1.0 
+~ Daily=Shape_Solar Model=1 Vminpu=0.9 Vmaxpu=1.1
+
+! 2. Wind Generation at Bus 680 (e.g., Ramakkalmedu or coastal wind mapping)
+! Rated 300 kVA
+New Generator.Wind_680 Phases=3 Bus1=680 kV=11 kW=250 PF=0.95 
+~ Daily=Shape_Wind Model=1 Vminpu=0.9 Vmaxpu=1.1

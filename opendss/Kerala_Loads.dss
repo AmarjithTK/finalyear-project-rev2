@@ -1,0 +1,24 @@
+! ----------------------------------------------------
+! Kerala 11kV Feeder - Sector Loads
+! Connected to the LT side (0.433kV) of the DTRs
+! ----------------------------------------------------
+
+! 1. Residential Load at Bus 634
+! Rated 80 kW, Power Factor 0.9, connected to Phase 3 Wye (LT)
+New Load.Res_Load Phases=3 Bus1=634_LT kV=0.433 kW=80 PF=0.9 
+~ Daily=Shape_Res Status=Variable Vminpu=0.85 Vmaxpu=1.15
+
+! 2. Industrial Load at Bus 671
+! Rated 400 kW, Power Factor 0.85 (requires good reactive power)
+New Load.Ind_Load Phases=3 Bus1=671_LT kV=0.433 kW=400 PF=0.85 
+~ Daily=Shape_Ind Status=Variable Vminpu=0.85 Vmaxpu=1.15
+
+! 3. Commercial Load at Bus 684
+! Rated 200 kW, Power Factor 0.9
+New Load.Com_Load Phases=3 Bus1=684_LT kV=0.433 kW=200 PF=0.9
+~ Daily=Shape_Com Status=Variable Vminpu=0.85 Vmaxpu=1.15
+
+! 4. Critical Load at Bus 692 (E.g., Hospital, pumping station)
+! Rated 120 kW, Power Factor 0.95
+New Load.Crit_Load Phases=3 Bus1=692_LT kV=0.433 kW=120 PF=0.95
+~ Daily=Shape_Crit Status=Variable Vminpu=0.85 Vmaxpu=1.15

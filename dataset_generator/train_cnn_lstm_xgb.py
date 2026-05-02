@@ -4,7 +4,13 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import (
+    explained_variance_score,
+    mean_absolute_error,
+    mean_squared_error,
+    median_absolute_error,
+    r2_score,
+)
 from xgboost import XGBRegressor
 from sklearn.multioutput import MultiOutputRegressor
 
@@ -31,7 +37,14 @@ df_filtered = df_filtered.sort_values(by='timestamp').reset_index(drop=True)
 # Input features: weather + time + previous load/generation
 features = ['temperature', 'humidity', 'wind_speed', 'cloud_cover', 'solar_irradiance']
 # Target variables to predict
-targets = ['residential_load_MW', 'commercial_load_MW', 'industrial_load_MW', 'solar_MW', 'wind_MW']
+targets = [
+    'residential_load_MW',
+    'commercial_load_MW',
+    'industrial_load_MW',
+    'critical_load_MW',
+    'solar_MW',
+    'wind_MW',
+]
 
 print(f"Dataset shape after filtering: {df_filtered.shape}")
 data = df_filtered[features + targets].values
@@ -48,6 +61,48 @@ def create_sequences(data, seq_length, num_features, num_targets):
         X.append(data[i:i + seq_length, :])
         y.append(data[i + seq_length, -num_targets:])
     return np.array(X), np.array(y)
+
+def calculate_metrics(actuals, predictions):
+    epsilon = 1e-8
+    non_zero_actuals = np.abs(actuals) > epsilon
+    smape_denominator = np.abs(actuals) + np.abs(predictions)
+    non_zero_smape = smape_denominator > epsilon
+
+    mse = mean_squared_error(actuals, predictions)
+    rmse = np.sqrt(mse)
+    mae = mean_absolute_error(actuals, predictions)
+    r2 = r2_score(actuals, predictions, multioutput='uniform_average')
+    explained_variance = explained_variance_score(actuals, predictions, multioutput='uniform_average')
+    median_ae = median_absolute_error(actuals, predictions)
+    max_ae = np.max(np.abs(actuals - predictions))
+    mape = np.mean(np.abs((actuals[non_zero_actuals] - predictions[non_zero_actuals]) / actuals[non_zero_actuals])) * 100
+    smape = np.mean(
+        2 * np.abs(predictions[non_zero_smape] - actuals[non_zero_smape]) / smape_denominator[non_zero_smape]
+    ) * 100
+
+    return {
+        'mse': mse,
+        'rmse': rmse,
+        'mae': mae,
+        'r2': r2,
+        'explained_variance': explained_variance,
+        'median_ae': median_ae,
+        'max_ae': max_ae,
+        'mape': mape,
+        'smape': smape,
+    }
+
+def print_metrics(title, metrics):
+    print(f"\n--- Summary of {title} Predictions ---")
+    print(f"Mean Squared Error (MSE):             {metrics['mse']:.5f}")
+    print(f"Root Mean Sq Error (RMSE):            {metrics['rmse']:.5f}")
+    print(f"Mean Absolute Error (MAE):            {metrics['mae']:.5f}")
+    print(f"R-squared (R2):                       {metrics['r2']:.5f}")
+    print(f"Explained Variance Score:             {metrics['explained_variance']:.5f}")
+    print(f"Median Absolute Error (MedAE):        {metrics['median_ae']:.5f}")
+    print(f"Maximum Absolute Error (MaxAE):       {metrics['max_ae']:.5f}")
+    print(f"Mean Absolute Percentage Error (MAPE): {metrics['mape']:.2f}%")
+    print(f"Symmetric MAPE (SMAPE):               {metrics['smape']:.2f}%")
 
 X, y = create_sequences(scaled_data, SEQ_LENGTH, len(features), len(targets))
 
@@ -130,25 +185,19 @@ xgb_model = MultiOutputRegressor(xgb_base)
 
 xgb_model.fit(X_train_features, y_train)
 
-# --- 8. Evaluation ---
+# --- 8. Evaluation Metrics ---
 print("Evaluating Hybrid Model on Test Set...")
 predictions = xgb_model.predict(X_test_features)
 actuals = y_test
 
-mse = mean_squared_error(actuals, predictions)
-mae = mean_absolute_error(actuals, predictions)
-rmse = np.sqrt(mse)
-
-print("\n--- Summary of CNN-LSTM-XGBoost Predictions ---")
-print(f"Mean Squared Error (MSE):  {mse:.5f}")
-print(f"Root Mean Sq Error (RMSE): {rmse:.5f}")
-print(f"Mean Absolute Error (MAE): {mae:.5f}")
+metrics = calculate_metrics(actuals, predictions)
+print_metrics("CNN-LSTM-XGBoost", metrics)
 
 # --- 9. Save Models ---
 print("\nSaving Base PyTorch model and XGBoost MultiOutputRegressor...")
 import joblib
 import torch
-torch.save(base_model.state_dict(), 'cnn_lstm_base_model.pth')
+torch.save(model.state_dict(), 'cnn_lstm_base_model.pth')
 joblib.dump(xgb_model, 'xgb_model.joblib')
 joblib.dump(scaler, 'scaler.joblib')
 print("Models and Scaler saved successfully!")

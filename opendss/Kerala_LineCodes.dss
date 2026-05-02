@@ -1,0 +1,39 @@
+! ----------------------------------------------------
+! Kerala / Indian Standard Conductor LineCodes
+! Used commonly in KSEB 11kV and LT Lines
+! ----------------------------------------------------
+
+! We define standard ACSR (Aluminum Conductor Steel Reinforced) and AAC conductors
+! Values are approximate Ohms per km, converted to standard OpenDSS metrics
+
+! 1. ACSR Rabbit (Common for LT and light 11kV spurs)
+! Current Carrying Capacity ~185A
+! R = ~0.835 Ohms/km, X = ~0.35 Ohms/km at 50Hz
+New LineCode.Rabbit nphases=3 BaseFreq=50
+~ rmatrix=[0.835 | 0 0.835 | 0 0 0.835]
+~ xmatrix=[0.35  | 0 0.35  | 0 0 0.35 ]
+~ units=km
+
+! 2. ACSR Raccoon (Very common for 11kV Feeders)
+! Current Carrying Capacity ~250A
+! R = ~0.53 Ohms/km, X = ~0.32 Ohms/km at 50Hz
+New LineCode.Raccoon nphases=3 BaseFreq=50
+~ rmatrix=[0.53 | 0 0.53 | 0 0 0.53]
+~ xmatrix=[0.32 | 0 0.32 | 0 0 0.32]
+~ units=km
+
+! 3. ACSR Dog (High capacity 11kV backbone)
+! Current Carrying Capacity ~300A
+! R = ~0.27 Ohms/km, X = ~0.29 Ohms/km at 50Hz
+New LineCode.Dog nphases=3 BaseFreq=50
+~ rmatrix=[0.27 | 0 0.27 | 0 0 0.27]
+~ xmatrix=[0.29 | 0 0.29 | 0 0 0.29]
+~ units=km
+
+! 4. LT ABC Cable 3-Phase + Neutral (For LT connections to loads)
+! Assuming 3x50 sq.mm Al + 1x35 sq.mm neutral (Typical KSEB LT line)
+! R = ~0.64 Ohms/km, X = ~0.08 Ohms/km
+New LineCode.LT_ABC_50 nphases=3 BaseFreq=50
+~ rmatrix=[0.64 | 0 0.64 | 0 0 0.64]
+~ xmatrix=[0.08 | 0 0.08 | 0 0 0.08]
+~ units=km

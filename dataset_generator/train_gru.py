@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import (
@@ -17,10 +16,9 @@ from sklearn.metrics import (
 DATA_FILE = "kerala_microgrid_hourly_dataset.csv"
 SEQ_LENGTH = 24  # Use 24 hours of history to predict the next hour
 BATCH_SIZE = 32
-CNN_FILTERS = 64
-LSTM_HIDDEN_SIZE = 64
-NUM_LSTM_LAYERS = 1
-EPOCHS = 30  # Aligning with our Phase 2 and Phase 3 datasets
+HIDDEN_SIZE = 64
+NUM_LAYERS = 2
+EPOCHS = 30
 LEARNING_RATE = 0.001
 
 # --- 2. Load Data ---
@@ -28,10 +26,10 @@ print("Loading dataset...")
 df = pd.read_csv(DATA_FILE)
 df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-# Ensure chronological order
+# Use the full dataset timeline and ensure chronological order
 df_filtered = df.sort_values(by='timestamp').reset_index(drop=True)
 
-# Input features: weather + time + previous load/generation
+# Input features: weather + previous load/generation
 features = ['temperature', 'humidity', 'wind_speed', 'cloud_cover', 'solar_irradiance']
 # Target variables to predict (Load & Generation)
 targets = [
@@ -54,12 +52,12 @@ scaler = MinMaxScaler(feature_range=(0, 1))
 scaled_data = scaler.fit_transform(data)
 
 # --- 4. Sequence Generation (Time Series windowing) ---
-def create_sequences(data, seq_length, num_features, num_targets):
+def create_sequences(data, seq_length, num_targets):
     X = []
     y = []
     for i in range(len(data) - seq_length):
-        X.append(data[i:i + seq_length, :]) # All features and targets inside window
-        y.append(data[i + seq_length, -num_targets:]) # Only predict targets
+        X.append(data[i:i + seq_length, :])  # All features and targets inside window
+        y.append(data[i + seq_length, -num_targets:])  # Only predict targets
     return np.array(X), np.array(y)
 
 def calculate_metrics(actuals, predictions):
@@ -104,7 +102,7 @@ def print_metrics(title, metrics):
     print(f"Mean Absolute Percentage Error (MAPE): {metrics['mape']:.2f}%")
     print(f"Symmetric MAPE (SMAPE):               {metrics['smape']:.2f}%")
 
-X, y = create_sequences(scaled_data, SEQ_LENGTH, len(features), len(targets))
+X, y = create_sequences(scaled_data, SEQ_LENGTH, len(targets))
 
 # Train/Test Split (80% train, 20% test)
 train_size = int(len(X) * 0.8)
@@ -112,74 +110,38 @@ X_train, X_test = X[:train_size], X[train_size:]
 y_train, y_test = y[:train_size], y[train_size:]
 
 # Convert to PyTorch Tensors
-X_train_t = torch.FloatTensor(X_train) 
-y_train_t = torch.FloatTensor(y_train) 
+X_train_t = torch.FloatTensor(X_train)  # Shape: (samples, sequence, features+targets)
+y_train_t = torch.FloatTensor(y_train)  # Shape: (samples, targets)
 X_test_t = torch.FloatTensor(X_test)
 y_test_t = torch.FloatTensor(y_test)
 
 train_loader = DataLoader(TensorDataset(X_train_t, y_train_t), batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(TensorDataset(X_test_t, y_test_t), batch_size=BATCH_SIZE, shuffle=False)
 
-# --- 5. PyTorch CNN-LSTM-Attention Hybrid Model definition ---
-class MicrogridCNNLSTMAttention(nn.Module):
-    def __init__(self, input_size, cnn_filters, lstm_hidden_size, num_lstm_layers, output_size):
-        super(MicrogridCNNLSTMAttention, self).__init__()
-        
-        # 1D Convolutional Layer for Feature Extraction
-        self.conv1d = nn.Conv1d(in_channels=input_size, out_channels=cnn_filters, kernel_size=3, padding=1)
-        self.relu = nn.ReLU()
-        
-        # LSTM Layer for Sequential Modeling
-        self.lstm = nn.LSTM(input_size=cnn_filters, hidden_size=lstm_hidden_size, num_layers=num_lstm_layers, batch_first=True)
-        
-        # --- Self-Attention Mechanism ---
-        # Maps the LSTM hidden states to attention scores
-        self.attention_layer = nn.Linear(lstm_hidden_size, 1)
-        
-        # Fully Connected Output Layer
-        self.fc = nn.Linear(lstm_hidden_size, output_size)
-    
+# --- 5. PyTorch GRU Model definition ---
+class MicrogridGRU(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, output_size):
+        super(MicrogridGRU, self).__init__()
+        self.gru = nn.GRU(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
+
     def forward(self, x):
-        # Permute input from [batch, sequence, features] to [batch, features, sequence] for Conv1d
-        x = x.permute(0, 2, 1)
-        
-        # Pass through CNN
-        c_out = self.relu(self.conv1d(x))
-        
-        # Permute back to [batch, sequence, filters] for LSTM
-        c_out = c_out.permute(0, 2, 1)
-        
-        # Pass through LSTM
-        # lstm_out shape: [batch_size, seq_length, lstm_hidden_size]
-        lstm_out, _ = self.lstm(c_out)
-        
-        # --- Attention Mechanism Application ---
-        # 1. Get raw attention scores for each time step
-        attn_scores = self.attention_layer(lstm_out) # Shape: [batch_size, seq_length, 1]
-        
-        # 2. Apply Softmax to get probabilities (weights) across the sequence length
-        attn_weights = F.softmax(attn_scores, dim=1) # Shape: [batch_size, seq_length, 1]
-        
-        # 3. Multiply weights against LSTM outputs and sum them up (Context Vector)
-        # Instead of just looking at the -1 (last) time step, we now look at a weighted sum of ALL past 24 hours.
-        context_vector = torch.sum(attn_weights * lstm_out, dim=1) # Shape: [batch_size, lstm_hidden_size]
-        
-        # --- Final Prediction ---
-        out = self.fc(context_vector)
+        out, _ = self.gru(x)
+        # Take the output of the last time step from GRU sequence
+        out = self.fc(out[:, -1, :])
         return out
 
 # Model instantiation
-model = MicrogridCNNLSTMAttention(input_size=len(features)+len(targets), 
-                                  cnn_filters=CNN_FILTERS,
-                                  lstm_hidden_size=LSTM_HIDDEN_SIZE, 
-                                  num_lstm_layers=NUM_LSTM_LAYERS, 
-                                  output_size=len(targets))
+model = MicrogridGRU(input_size=len(features) + len(targets),
+                     hidden_size=HIDDEN_SIZE,
+                     num_layers=NUM_LAYERS,
+                     output_size=len(targets))
 
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
 # --- 6. Training Loop ---
-print("Starting training CNN-LSTM-Attention (epochs)...")
+print("Starting GRU training (epochs)...")
 for epoch in range(EPOCHS):
     model.train()
     train_loss = 0
@@ -190,12 +152,12 @@ for epoch in range(EPOCHS):
         loss.backward()
         optimizer.step()
         train_loss += loss.item()
-        
+
     train_loss /= len(train_loader)
-    print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {train_loss:.6f}")
+    print(f"Epoch [{epoch + 1}/{EPOCHS}], Loss: {train_loss:.6f}")
 
 # --- 7. Evaluation Metrics ---
-print("\nEvaluating model on Test Set...")
+print("\nEvaluating GRU model on Test Set...")
 model.eval()
 predictions = []
 actuals = []
@@ -211,11 +173,11 @@ actuals = np.vstack(actuals)
 
 # Calculate metrics (on 0-1 scaled data)
 metrics = calculate_metrics(actuals, predictions)
-print_metrics("CNN-LSTM-Attention", metrics)
+print_metrics("GRU", metrics)
 
 # --- 8. Save Model ---
-print("\nSaving model to 'cnn_lstm_attention_model.pth'...")
-torch.save(model.state_dict(), 'cnn_lstm_attention_model.pth')
+print("\nSaving model to 'gru_model.pth'...")
+torch.save(model.state_dict(), 'gru_model.pth')
 import joblib
 joblib.dump(scaler, 'scaler.joblib')
 print("Model and Scaler saved successfully!")

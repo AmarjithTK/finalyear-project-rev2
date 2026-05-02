@@ -1,0 +1,30 @@
+Clear
+
+! ----------------------------------------------------
+! Master File for Kerala 11kV Feeder Model
+! KSEB 11kV Distribution Feeder
+! ----------------------------------------------------
+
+New Circuit.Kerala11kV 
+~ basekv=11 pu=1.02 phases=3 bus1=SourceBus 
+~ Angle=30
+~ MVAsc3=200 MVAsc1=200 ! Typical short circuit MVA at 11kV bus
+
+! Redirect to modular parameter files
+Redirect Kerala_LineCodes.dss
+Redirect Kerala_Lines.dss
+Redirect Kerala_Transformers.dss
+Redirect Kerala_LoadShapes.dss
+Redirect Kerala_Loads.dss
+Redirect Kerala_DERs.dss
+
+! Set voltage bases
+Set VoltageBases=[11.0, 0.433]
+CalcVoltageBases
+
+! Default Simulation setup a snapshot power flow
+Set ControlMode=Static
+Set Mode=Snap
+
+! Solve
+! Solve

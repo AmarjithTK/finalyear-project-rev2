@@ -1,0 +1,30 @@
+! ----------------------------------------------------
+! Kerala 11kV Feeder - Distribution Transformers
+! Standard KSEB DTR specs: 11kV/433V (Delta/Star)
+! ----------------------------------------------------
+
+! 1. Residential Sector DTR (Bus 634) - 100kVA
+New Transformer.TR_Res634 Phases=3 Windings=2
+~ Xhl=4.5
+~ wdg=1 bus=634   conn=Delta kv=11   kva=100
+~ wdg=2 bus=634_LT conn=Wye  kv=0.433 kva=100
+
+! 2. Industrial Sector DTR (Bus 671) - 500kVA
+New Transformer.TR_Ind671 Phases=3 Windings=2
+~ Xhl=5.0
+~ wdg=1 bus=671   conn=Delta kv=11   kva=500
+~ wdg=2 bus=671_LT conn=Wye  kv=0.433 kva=500
+
+! 3. Commercial Sector DTR (Bus 684) - 250kVA
+New Transformer.TR_Com684 Phases=3 Windings=2
+~ Xhl=4.5
+~ wdg=1 bus=684   conn=Delta kv=11   kva=250
+~ wdg=2 bus=684_LT conn=Wye  kv=0.433 kva=250
+
+! 4. Critical Sector DTR (Hospital, etc. - Bus 692) - 160kVA
+New Transformer.TR_Crit692 Phases=3 Windings=2
+~ Xhl=4.5
+~ wdg=1 bus=692   conn=Delta kv=11   kva=160
+~ wdg=2 bus=692_LT conn=Wye  kv=0.433 kva=160
+
+! Note: PV (675) and Wind (680) will be directly coupled or have their own inverter matching transformers configured in the DER file.
