@@ -33,15 +33,15 @@ df = df.sort_values(by='Timestamp').reset_index(drop=True)
 # Input features (Weather and Time)
 features = ['Hour', 'Temperature_C', 'Humidity_pct', 'Wind_Speed_ms', 'Cloud_Cover_pct', 'Solar_Irradiance_Wm2']
 
-# Target variables to predict (Load, Gen, and Grid stability metrics)
+# Target variables to predict (Full Grid state, Load, Gen, Voltages, Loadings, Losses)
 targets = [
-    'Total_Load_MW',
-    'Solar_MW',
-    'Wind_MW',
-    'Grid_Import_MW',
-    'V_Min_pu',
-    'Max_Line_Loading_pct',
-    'Total_Loss_MW'
+    'Solar_MW', 'Wind_MW', 'Total_Load_MW',
+    'Grid_Import_MW', 'Grid_Import_MVAR',
+    'V_Sub_650', 'V_Split_632', 'V_Solar_633', 'V_Wind_675', 
+    'V_Res_634', 'V_Ind_671', 'V_Com_684', 'V_Crit_692', 
+    'V_Min_pu', 'V_Max_pu',
+    'L_Main_650_632_pct', 'L_IndWind_632_671_pct', 'L_Solar_632_633_pct', 'Max_Line_Loading_pct',
+    'Total_Loss_MW', 'Total_Loss_MVAR'
 ]
 
 print(f"Dataset shape: {df.shape}")
