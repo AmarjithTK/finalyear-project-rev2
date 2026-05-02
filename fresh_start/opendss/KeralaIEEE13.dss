@@ -1,0 +1,106 @@
+Clear
+Set DefaultBaseFrequency=50
+
+New Circuit.KeralaIEEE13 basekv=33 pu=1.0 phases=3 bus1=SourceBus
+
+! ============================================================
+! 33/11kV Substation Transformer (5 MVA)
+! ============================================================
+New Transformer.Sub Phases=3 Windings=2 XHL=8
+~ wdg=1 bus=SourceBus conn=Delta kv=33 kva=5000 %r=0.5
+~ wdg=2 bus=650     conn=Wye   kv=11 kva=5000 %r=0.5
+
+! ============================================================
+! Line Codes
+! ============================================================
+New Linecode.KLine_HV nphases=3 BaseFreq=50
+~ r1=0.32 x1=0.38 r0=0.75 x0=1.10 units=km
+
+New Linecode.KLine_MV nphases=3 BaseFreq=50
+~ r1=0.50 x1=0.45 r0=0.90 x0=1.20 units=km
+
+! ============================================================
+! IEEE 13-Bus Feeder Lines (11kV backbone)
+! ============================================================
+New Line.L650_632  Bus1=650  Bus2=632  phases=3 linecode=KLine_HV length=1.0
+New Line.L632_633  Bus1=632  Bus2=633  phases=3 linecode=KLine_HV length=0.5
+New Line.L632_671  Bus1=632  Bus2=671  phases=3 linecode=KLine_HV length=1.0
+New Line.L671_675  Bus1=671  Bus2=675  phases=3 linecode=KLine_HV length=0.8
+New Line.L675_680  Bus1=675  Bus2=680  phases=3 linecode=KLine_HV length=0.5
+New Line.L671_684  Bus1=671  Bus2=684  phases=3 linecode=KLine_MV length=0.3
+New Line.L684_692  Bus1=684  Bus2=692  phases=3 linecode=KLine_MV length=0.4
+New Line.L692_634  Bus1=692  Bus2=634  phases=3 linecode=KLine_MV length=0.5
+
+! ============================================================
+! Distribution Transformer - Bus 634 (Residential, 1500kVA)
+! ============================================================
+New Transformer.DT_Res Phases=3 Windings=2 XHL=4
+~ wdg=1 bus=634    conn=Wye kv=11    kva=1500 %r=0.5
+~ wdg=2 bus=634LV  conn=Wye kv=0.433 kva=1500 %r=0.5
+
+! ============================================================
+! Distribution Transformer - Bus 684 (Commercial, 1000kVA)
+! ============================================================
+New Transformer.DT_Com Phases=3 Windings=2 XHL=4
+~ wdg=1 bus=684    conn=Wye kv=11    kva=1000 %r=0.5
+~ wdg=2 bus=684LV  conn=Wye kv=0.433 kva=1000 %r=0.5
+
+! ============================================================
+! Distribution Transformer - Bus 671 (Industrial, 1500kVA)
+! ============================================================
+New Transformer.DT_Ind Phases=3 Windings=2 XHL=4
+~ wdg=1 bus=671    conn=Wye kv=11    kva=1500 %r=0.5
+~ wdg=2 bus=671LV  conn=Wye kv=0.433 kva=1500 %r=0.5
+
+! ============================================================
+! Distribution Transformer - Bus 692 (Critical, 500kVA)
+! ============================================================
+New Transformer.DT_Crit Phases=3 Windings=2 XHL=4
+~ wdg=1 bus=692    conn=Wye kv=11    kva=500  %r=0.5
+~ wdg=2 bus=692LV  conn=Wye kv=0.433 kva=500  %r=0.5
+
+! ============================================================
+! LOADS - Residential Sector (Bus 634, Peak=1500kW)
+! ============================================================
+New Load.Res_A Bus1=634LV.1 phases=1 conn=wye kv=0.24 kw=500 kvar=150 model=1
+New Load.Res_B Bus1=634LV.2 phases=1 conn=wye kv=0.24 kw=500 kvar=150 model=1
+New Load.Res_C Bus1=634LV.3 phases=1 conn=wye kv=0.24 kw=500 kvar=150 model=1
+
+! ============================================================
+! LOADS - Commercial Sector (Bus 684, Peak=800kW)
+! ============================================================
+New Load.Com_A Bus1=684LV.1 phases=1 conn=wye kv=0.24 kw=267 kvar=80  model=2
+New Load.Com_B Bus1=684LV.2 phases=1 conn=wye kv=0.24 kw=267 kvar=80  model=2
+New Load.Com_C Bus1=684LV.3 phases=1 conn=wye kv=0.24 kw=266 kvar=80  model=2
+
+! ============================================================
+! LOADS - Industrial Sector (Bus 671, Peak=1100kW)
+! ============================================================
+New Load.Ind_A Bus1=671LV.1 phases=1 conn=wye kv=0.24 kw=367 kvar=110 model=1
+New Load.Ind_B Bus1=671LV.2 phases=1 conn=wye kv=0.24 kw=367 kvar=110 model=1
+New Load.Ind_C Bus1=671LV.3 phases=1 conn=wye kv=0.24 kw=366 kvar=110 model=1
+
+! ============================================================
+! LOADS - Critical Sector (Bus 692, Peak=400kW) - Always ON
+! ============================================================
+New Load.Crit_A Bus1=692LV.1 phases=1 conn=wye kv=0.24 kw=133 kvar=40  model=1
+New Load.Crit_B Bus1=692LV.2 phases=1 conn=wye kv=0.24 kw=133 kvar=40  model=1
+New Load.Crit_C Bus1=692LV.3 phases=1 conn=wye kv=0.24 kw=134 kvar=40  model=1
+
+! ============================================================
+! RENEWABLE DER
+! Solar PV = 1.2 MW at Bus 633 (11kV)
+! Wind    = 0.8 MW at Bus 675 (11kV)
+! ============================================================
+New PVSystem.SolarPV phases=3 bus1=633 kv=11 kva=1200 pmpp=1200 irradiance=1.0
+~ %cutin=0.1 %cutout=0.1
+
+New Generator.WindGen phases=3 bus1=675 kv=11 kw=800 kvar=100 model=1
+! ~ %r=0 %x=0.1
+
+! ============================================================
+! Voltage Bases
+! ============================================================
+Set Voltagebases=[33,11,0.433]
+CalcVoltageBases
+Solve

@@ -1,0 +1,120 @@
+Clear
+Set DefaultBaseFrequency=50
+
+!=========================================================
+! Kerala IEEE13 Modified Distribution Feeder
+! Based on IEEE13Nodeckt topology
+!=========================================================
+
+New Circuit.KeralaIEEE13Nodeckt
+~ basekv=33 pu=1.00 phases=3 bus1=SourceBus
+~ Angle=30
+~ MVAsc3=5000 MVAsc1=4000
+
+!=========================================================
+! 33/11kV Substation Transformer
+!=========================================================
+
+New Transformer.Sub
+~ phases=3 windings=2 XHL=8
+~ wdg=1 bus=SourceBus conn=Delta kv=33 kva=10000 %r=0.5
+~ wdg=2 bus=650 conn=Wye kv=11 kva=10000 %r=0.5
+
+!=========================================================
+! LINECODES (Kerala 11kV OH line)
+!=========================================================
+
+New Linecode.K11 nphases=3 BaseFreq=50
+~ r1=0.306 x1=0.347 r0=0.592 x0=1.1 c1=3.4 c0=1.6 units=km
+
+New Linecode.K11_1ph nphases=1 BaseFreq=50
+~ r1=0.55 x1=0.40 units=km
+
+!=========================================================
+! FEEDER LINES (IEEE13 topology retained)
+!=========================================================
+
+New Line.650632 phases=3 bus1=650 bus2=632 linecode=K11 length=1.2 units=km
+New Line.632670 phases=3 bus1=632 bus2=670 linecode=K11 length=0.4 units=km
+New Line.670671 phases=3 bus1=670 bus2=671 linecode=K11 length=0.7 units=km
+New Line.671680 phases=3 bus1=671 bus2=680 linecode=K11 length=0.5 units=km
+New Line.632633 phases=3 bus1=632 bus2=633 linecode=K11 length=0.3 units=km
+New Line.632645 phases=1 bus1=632.2 bus2=645.2 linecode=K11_1ph length=0.25 units=km
+New Line.645646 phases=1 bus1=645.2 bus2=646.2 linecode=K11_1ph length=0.15 units=km
+New Line.671684 phases=1 bus1=671.3 bus2=684.3 linecode=K11_1ph length=0.20 units=km
+New Line.684611 phases=1 bus1=684.3 bus2=611.3 linecode=K11_1ph length=0.10 units=km
+New Line.684652 phases=1 bus1=684.1 bus2=652.1 linecode=K11_1ph length=0.18 units=km
+New Line.671692 phases=3 bus1=671 bus2=692 Switch=y
+New Line.692675 phases=3 bus1=692 bus2=675 linecode=K11 length=0.25 units=km
+
+!=========================================================
+! DISTRIBUTION TRANSFORMERS (KSEB style)
+!=========================================================
+
+! 500 kVA DT at 633
+New Transformer.DT633
+~ phases=3 windings=2 XHL=4
+~ wdg=1 bus=633 conn=Wye kv=11 kva=500 %r=1
+~ wdg=2 bus=633LV conn=Wye kv=0.433 kva=500 %r=1
+
+! 250 kVA DT at 675
+New Transformer.DT675
+~ phases=3 windings=2 XHL=4
+~ wdg=1 bus=675 conn=Wye kv=11 kva=250 %r=1
+~ wdg=2 bus=675LV conn=Wye kv=0.433 kva=250 %r=1
+
+! 100 kVA DT at 646
+New Transformer.DT646
+~ phases=3 windings=2 XHL=4
+~ wdg=1 bus=646 conn=Wye kv=11 kva=100 %r=1
+~ wdg=2 bus=646LV conn=Wye kv=0.433 kva=100 %r=1
+
+!=========================================================
+! LV LOADS (415/240V)
+!=========================================================
+
+! Residential at 633
+New Load.H1 bus1=633LV.1 phases=1 conn=Wye kv=0.24 kw=40 kvar=12
+New Load.H2 bus1=633LV.2 phases=1 conn=Wye kv=0.24 kw=38 kvar=11
+New Load.H3 bus1=633LV.3 phases=1 conn=Wye kv=0.24 kw=35 kvar=10
+
+! Commercial at 675
+New Load.C1 bus1=675LV.1 phases=1 conn=Wye kv=0.24 kw=55 kvar=18
+New Load.C2 bus1=675LV.2 phases=1 conn=Wye kv=0.24 kw=50 kvar=16
+New Load.C3 bus1=675LV.3 phases=1 conn=Wye kv=0.24 kw=45 kvar=15
+
+! Rural at 646
+New Load.R1 bus1=646LV.1 phases=1 conn=Wye kv=0.24 kw=20 kvar=6
+New Load.R2 bus1=646LV.2 phases=1 conn=Wye kv=0.24 kw=18 kvar=5
+New Load.R3 bus1=646LV.3 phases=1 conn=Wye kv=0.24 kw=16 kvar=5
+
+! Direct 11kV loads
+New Load.L645 bus1=645.2 phases=1 conn=Wye kv=6.35 kw=60 kvar=18
+New Load.L611 bus1=611.3 phases=1 conn=Wye kv=6.35 kw=45 kvar=14
+New Load.L652 bus1=652.1 phases=1 conn=Wye kv=6.35 kw=40 kvar=12
+
+!=========================================================
+! Capacitors
+!=========================================================
+
+New Capacitor.Cap1 bus1=675 phases=3 kvar=300 kv=11
+New Capacitor.Cap2 bus1=611.3 phases=1 kvar=50 kv=6.35
+
+!=========================================================
+! Solar PV
+!=========================================================
+
+New PVSystem.PV633 phases=3 bus1=633 kv=11 kva=150 pmpp=120 pf=1.0
+
+!=========================================================
+! Voltage Bases
+!=========================================================
+
+Set VoltageBases=[33,11,0.433]
+CalcVoltageBases
+
+Solve
+
+Show Voltages LN Nodes
+Show Powers kva Elements
+Show Losses

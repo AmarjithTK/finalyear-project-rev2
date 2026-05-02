@@ -1,0 +1,262 @@
+%% ========================================================================
+% MULTI-SECTOR MICROGRID DATASET ANALYZER + TIME SERIES PLOTTER
+% Author: Amarjith TK (Modified by ChatGPT)
+% Purpose:
+%   Analyse and plot advanced IEEE13 / Microgrid dataset containing:
+%   Residential, Commercial, Industrial, Critical Load,
+%   Total Load, Solar, Wind, Thermal, Grid Import/Export,
+%   Avg/Min/Max Voltage, Frequency, Feeder Loss, PF,
+%   Grid Mode, Undervoltage, Overload etc.
+%
+% Performs previous functions:
+%   ✔ Read CSV
+%   ✔ Filter by date
+%   ✔ Resample data
+%   ✔ Plot selected parameters
+%   ✔ Multi-parameter analysis
+%   ✔ Power balance checks
+%   ✔ Voltage quality check
+%   ✔ Frequency stability check
+%   ✔ Save graphs
+%% ========================================================================
+
+clc;
+clear;
+close all;
+
+%% ================= USER SETTINGS =======================================
+
+filename = 'ieee13_microgrid_dataset2.csv';
+
+% -------- Time Range ----------
+startDate = datetime('2025-01-01 00:00:00', ...
+    'InputFormat','yyyy-MM-dd HH:mm:ss','TimeZone','UTC');
+
+endDate   = datetime('2025-01-03 00:00:00', ...
+    'InputFormat','yyyy-MM-dd HH:mm:ss','TimeZone','UTC');
+
+intervalMinutes = 60;
+
+% -------- Parameters to Plot ----------
+parameters = {
+    'residential_load_kw'
+    'commercial_load_kw'
+    'industrial_load_kw'
+    'critical_load_kw'
+    'total_load_kw'
+    'solar_kw'
+    'wind_kw'
+    'thermal_kw'
+    'grid_import_kw'
+    'grid_export_kw'
+    'avg_voltage'
+    'frequency'
+    'feeder_loss_kw'
+    'power_factor'
+};
+
+% -------- Graph Settings ----------
+saveFigures = true;
+savePrefix = 'microgrid_';
+
+figureWidth  = 1000;
+figureHeight = 500;
+
+%% ======================================================================
+%% 1. READ DATASET
+
+data = readtable(filename);
+
+disp("Columns detected:");
+disp(data.Properties.VariableNames');
+
+%% ======================================================================
+%% 2. FIND TIMESTAMP COLUMN
+
+timeCol = find(strcmpi(data.Properties.VariableNames,'timestamp') | ...
+               strcmpi(data.Properties.VariableNames,'time') | ...
+               strcmpi(data.Properties.VariableNames,'datetime'),1);
+
+if isempty(timeCol)
+    error('Timestamp column not found.');
+end
+
+data.Time = datetime(data{:,timeCol}, ...
+    'InputFormat','yyyy-MM-dd''T''HH:mm:ss''Z''', ...
+    'TimeZone','UTC');
+
+%% ======================================================================
+%% 3. FILTER DATE RANGE
+
+mask = data.Time >= startDate & data.Time <= endDate;
+data = data(mask,:);
+
+if isempty(data)
+    error('No data found in selected range');
+end
+
+%% ======================================================================
+%% 4. KEEP NUMERIC DATA ONLY
+
+numericVars = varfun(@isnumeric,data,'OutputFormat','uniform');
+
+data = data(:, numericVars | strcmp(data.Properties.VariableNames,'Time'));
+
+%% ======================================================================
+%% 5. CONVERT TO TIMETABLE + RESAMPLE
+
+TT = table2timetable(data,'RowTimes','Time');
+
+TT = retime(TT,'regular','mean','TimeStep',minutes(intervalMinutes));
+
+%% ======================================================================
+%% 6. VALIDATE PARAMETERS
+
+validParams = {};
+
+for i = 1:length(parameters)
+    if ismember(parameters{i},TT.Properties.VariableNames)
+        validParams{end+1} = parameters{i};
+    end
+end
+
+%% ======================================================================
+%% 7. PLOT EACH PARAMETER
+
+for i = 1:length(validParams)
+
+    param = validParams{i};
+
+    fig = figure('Color','w', ...
+        'Position',[100 100 figureWidth figureHeight]);
+
+    plot(TT.Time, TT.(param),'LineWidth',1.8);
+
+    grid on;
+    box on;
+
+    xlabel('Time');
+    ylabel(strrep(param,'_',' '));
+    title(['Time Series : ', strrep(param,'_',' ')]);
+
+    xtickformat('dd-MMM HH:mm');
+
+    if saveFigures
+        saveas(fig,[savePrefix param '.png']);
+    end
+end
+
+%% ======================================================================
+%% 8. POWER BALANCE ANALYSIS
+
+disp(" ");
+disp("============= POWER BALANCE ANALYSIS =============");
+
+reqCols = {'solar_kw','wind_kw','thermal_kw',...
+          'grid_import_kw','total_load_kw','grid_export_kw'};
+
+if all(ismember(reqCols,TT.Properties.VariableNames))
+
+    generation = TT.solar_kw + TT.wind_kw + TT.thermal_kw ...
+               + TT.grid_import_kw;
+
+    demand = TT.total_load_kw + TT.grid_export_kw;
+
+    mismatch = generation - demand;
+
+    fprintf('Average Power Mismatch = %.2f kW\n',mean(mismatch,'omitnan'));
+    fprintf('Maximum Power Mismatch = %.2f kW\n',max(abs(mismatch)));
+
+    figure;
+    plot(TT.Time,mismatch,'LineWidth',1.5);
+    title('Power Balance Error');
+    ylabel('kW');
+    grid on;
+end
+
+%% ======================================================================
+%% 9. VOLTAGE QUALITY ANALYSIS
+
+disp(" ");
+disp("============= VOLTAGE QUALITY =============");
+
+if ismember('avg_voltage',TT.Properties.VariableNames)
+
+    V = TT.avg_voltage;
+
+    undervoltage_count = sum(V < 0.95*mean(V,'omitnan'));
+    overvoltage_count  = sum(V > 1.05*mean(V,'omitnan'));
+
+    fprintf('Undervoltage samples = %d\n',undervoltage_count);
+    fprintf('Overvoltage samples  = %d\n',overvoltage_count);
+
+end
+
+%% ======================================================================
+%% 10. FREQUENCY ANALYSIS
+
+disp(" ");
+disp("============= FREQUENCY ANALYSIS =============");
+
+if ismember('frequency',TT.Properties.VariableNames)
+
+    f = TT.frequency;
+
+    fprintf('Average Frequency = %.3f Hz\n',mean(f,'omitnan'));
+    fprintf('Minimum Frequency = %.3f Hz\n',min(f));
+    fprintf('Maximum Frequency = %.3f Hz\n',max(f));
+
+end
+
+%% ======================================================================
+%% 11. POWER FACTOR ANALYSIS
+
+disp(" ");
+disp("============= POWER FACTOR ANALYSIS =============");
+
+if ismember('power_factor',TT.Properties.VariableNames)
+
+    pf = TT.power_factor;
+
+    fprintf('Average PF = %.3f\n',mean(pf,'omitnan'));
+    fprintf('Minimum PF = %.3f\n',min(pf));
+
+end
+
+%% ======================================================================
+%% 12. FEEDER LOSS ANALYSIS
+
+disp(" ");
+disp("============= FEEDER LOSS ANALYSIS =============");
+
+if ismember('feeder_loss_kw',TT.Properties.VariableNames)
+
+    loss = TT.feeder_loss_kw;
+
+    fprintf('Average Feeder Loss = %.2f kW\n',mean(loss,'omitnan'));
+    fprintf('Maximum Feeder Loss = %.2f kW\n',max(loss));
+
+end
+
+%% ======================================================================
+%% 13. OVERLOAD / UNDERVOLTAGE FLAGS
+
+if ismember('overload',TT.Properties.VariableNames)
+
+    overload_events = sum(TT.overload > 0);
+    fprintf('\nOverload Events = %d\n',overload_events);
+
+end
+
+if ismember('undervoltage',TT.Properties.VariableNames)
+
+    uv_events = sum(TT.undervoltage > 0);
+    fprintf('Undervoltage Events = %d\n',uv_events);
+
+end
+
+%% ======================================================================
+disp(" ");
+disp("ALL ANALYSIS COMPLETED SUCCESSFULLY.");
+disp("Graphs saved.");
+%% ========================================================================

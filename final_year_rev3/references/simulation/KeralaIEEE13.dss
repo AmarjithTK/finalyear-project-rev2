@@ -1,0 +1,46 @@
+Clear
+Set DefaultBaseFrequency=50
+
+New Circuit.KeralaIEEE13 basekv=33 pu=1.0 phases=3 bus1=SourceBus
+
+! 33/11kV Substation Transformer
+New Transformer.Sub Phases=3 Windings=2 XHL=8
+~ wdg=1 bus=SourceBus conn=Delta kv=33 kva=5000 %r=0.5
+~ wdg=2 bus=650 conn=Wye kv=11 kva=5000 %r=0.5
+
+! Linecode
+New Linecode.KLine nphases=3 BaseFreq=50
+~ r1=0.32 x1=0.38 r0=0.75 x0=1.10 units=km
+
+! Main feeder lines
+New Line.L1 Bus1=650 Bus2=632 phases=3 linecode=KLine length=1
+New Line.L2 Bus1=632 Bus2=633 phases=3 linecode=KLine length=0.5
+New Line.L3 Bus1=632 Bus2=671 phases=3 linecode=KLine length=1
+New Line.L4 Bus1=671 Bus2=675 phases=3 linecode=KLine length=0.8
+New Line.L5 Bus1=675 Bus2=680 phases=3 linecode=KLine length=0.5
+
+! Distribution Transformer 500 kVA
+New Transformer.DT1 Phases=3 Windings=2 XHL=4
+~ wdg=1 bus=633 conn=Wye kv=11 kva=500 %r=1
+~ wdg=2 bus=633LV conn=Wye kv=0.433 kva=500 %r=1
+
+! Distribution Transformer 250 kVA
+New Transformer.DT2 Phases=3 Windings=2 XHL=4
+~ wdg=1 bus=675 conn=Wye kv=11 kva=250 %r=1
+~ wdg=2 bus=675LV conn=Wye kv=0.433 kva=250 %r=1
+
+! Loads
+New Load.Home1 Bus1=633LV.1 phases=1 conn=wye kv=0.24 kw=40 kvar=12
+New Load.Home2 Bus1=633LV.2 phases=1 conn=wye kv=0.24 kw=35 kvar=10
+New Load.Home3 Bus1=633LV.3 phases=1 conn=wye kv=0.24 kw=30 kvar=9
+
+New Load.Shop1 Bus1=675LV.1 phases=1 conn=wye kv=0.24 kw=55 kvar=18
+New Load.Shop2 Bus1=675LV.2 phases=1 conn=wye kv=0.24 kw=50 kvar=16
+New Load.Shop3 Bus1=675LV.3 phases=1 conn=wye kv=0.24 kw=45 kvar=15
+
+! Solar PV
+New PVSystem.PV1 phases=3 bus1=633 kv=11 kva=100 pmpp=100
+
+Set Voltagebases=[33,11,0.433]
+CalcVoltageBases
+Solve
