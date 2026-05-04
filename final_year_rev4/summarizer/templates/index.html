@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microgrid Load-Flow Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        grid: {
+                            ink: '#172026',
+                            soft: '#eef4f2',
+                            line: '#d8e2de',
+                            mint: '#0f766e',
+                            amber: '#b45309',
+                            red: '#b91c1c'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { scroll-behavior: smooth; }
+        body { background: #f6f8f7; color: #172026; }
+        .metric-card { border: 1px solid #d8e2de; background: rgba(255, 255, 255, 0.92); }
+        .status-normal { background: #dcfce7; color: #166534; }
+        .status-warning { background: #fef3c7; color: #92400e; }
+        .status-critical { background: #fee2e2; color: #991b1b; }
+        .report-body h1, .report-body h2, .report-body h3 { font-weight: 800; color: #172026; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+        .report-body h1 { font-size: 1.25rem; }
+        .report-body h2 { font-size: 1rem; }
+        .report-body p { margin: 0.65rem 0; color: #334155; }
+        .report-body ul { list-style: disc; padding-left: 1.2rem; margin: 0.65rem 0; color: #334155; }
+        .report-body strong { color: #0f766e; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <main class="mx-auto flex min-h-screen w-full max-w-[1500px] flex-col gap-5 px-4 py-4 sm:px-6 lg:px-8">
+        <header class="flex flex-col gap-4 border-b border-grid-line pb-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-grid-mint">Kerala IEEE 13-Bus</p>
+                <h1 class="mt-2 text-2xl font-black text-grid-ink sm:text-3xl">Predicted Load-Flow Results</h1>
+                <p id="sourcePath" class="mt-1 text-sm text-slate-500">Loading result file...</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <div id="healthBadge" class="rounded-full border border-grid-line bg-white px-4 py-2 text-sm font-bold text-slate-700">Checking</div>
+                <button id="refreshBtn" class="rounded-md border border-grid-line bg-white px-4 py-2 text-sm font-bold text-grid-ink shadow-sm transition hover:border-grid-mint hover:text-grid-mint">
+                    Refresh
+                </button>
+                <button id="generateBtn" class="rounded-md bg-grid-mint px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-400">
+                    Summarize With AI
+                </button>
+            </div>
+        </header>
+
+        <section id="metrics" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6"></section>
+
+        <section class="grid min-h-0 grid-cols-1 gap-5 xl:grid-cols-[1fr_420px]">
+            <div class="min-w-0 overflow-hidden rounded-lg border border-grid-line bg-white shadow-sm">
+                <div class="flex flex-col gap-3 border-b border-grid-line bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h2 class="text-base font-black text-grid-ink">24-Hour Telemetry Table</h2>
+                        <p id="tableMeta" class="text-sm text-slate-500">Preparing rows...</p>
+                    </div>
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <input id="searchInput" type="search" placeholder="Filter timestamp or status" class="h-10 w-full rounded-md border border-grid-line bg-grid-soft px-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-grid-mint focus:bg-white sm:w-64">
+                        <select id="statusFilter" class="h-10 rounded-md border border-grid-line bg-grid-soft px-3 text-sm font-semibold outline-none transition focus:border-grid-mint focus:bg-white">
+                            <option value="All">All states</option>
+                            <option value="Normal">Normal</option>
+                            <option value="Warning">Warning</option>
+                            <option value="Critical">Critical</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="max-h-[620px] overflow-auto">
+                    <table class="w-full min-w-[1180px] border-collapse text-left text-sm">
+                        <thead id="tableHead" class="sticky top-0 z-10 border-b border-grid-line bg-grid-soft text-xs uppercase text-slate-500"></thead>
+                        <tbody id="tableBody" class="divide-y divide-grid-line bg-white"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <aside class="flex min-h-[520px] flex-col overflow-hidden rounded-lg border border-grid-line bg-white shadow-sm">
+                <div class="border-b border-grid-line px-4 py-3">
+                    <h2 class="text-base font-black text-grid-ink">AI Operation Summary</h2>
+                    <p id="summaryHint" class="text-sm text-slate-500">Ready</p>
+                </div>
+                <div id="reportOutput" class="report-body min-h-0 flex-1 overflow-auto px-4 py-3 text-sm">
+                    <div id="localInsight" class="rounded-md bg-grid-soft p-4 text-sm leading-6 text-slate-700"></div>
+                </div>
+            </aside>
+        </section>
+    </main>
+
+    <script>
+        const metricEl = document.getElementById('metrics');
+        const tableHead = document.getElementById('tableHead');
+        const tableBody = document.getElementById('tableBody');
+        const tableMeta = document.getElementById('tableMeta');
+        const sourcePath = document.getElementById('sourcePath');
+        const healthBadge = document.getElementById('healthBadge');
+        const reportOutput = document.getElementById('reportOutput');
+        const summaryHint = document.getElementById('summaryHint');
+        const searchInput = document.getElementById('searchInput');
+        const statusFilter = document.getElementById('statusFilter');
+        const generateBtn = document.getElementById('generateBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+
+        let currentRows = [];
+        let currentColumns = [];
+
+        const labels = {
+            Status: 'State',
+            Net_Load_MW: 'Net MW',
+            Timestamp: 'Timestamp',
+            Total_Load_Predicted_MW: 'Load MW',
+            Total_DER_Predicted_MW: 'DER MW',
+            Grid_Import_MW: 'Grid MW',
+            System_Loss_MW: 'Loss MW',
+            V_Min_pu: 'V Min',
+            V_Max_pu: 'V Max',
+            Max_Line_Loading_pct: 'Max Line %',
+            V_Sub_650_pu: 'V 650',
+            V_Split_632_pu: 'V 632',
+            V_Res_634_pu: 'V 634',
+            V_Ind_671_pu: 'V 671',
+            L_Main_650_632_pct: 'L650-632 %',
+            L_Ind_632_671_pct: 'L632-671 %',
+            L_Solar_632_633_pct: 'L632-633 %'
+        };
+
+        const metricDefinitions = [
+            ['hours', 'Hours', 'h'],
+            ['peak_load_mw', 'Peak Load', 'MW'],
+            ['peak_der_mw', 'Peak DER', 'MW'],
+            ['avg_grid_import_mw', 'Avg Grid Import', 'MW'],
+            ['total_loss_mw', 'Total Loss', 'MW'],
+            ['max_line_loading_pct', 'Max Loading', '%']
+        ];
+
+        function stateClass(status) {
+            if (status === 'Critical') return 'status-critical';
+            if (status === 'Warning') return 'status-warning';
+            return 'status-normal';
+        }
+
+        function renderMetrics(summary) {
+            metricEl.innerHTML = metricDefinitions.map(([key, label, unit]) => `
+                <article class="metric-card rounded-lg p-4 shadow-sm">
+                    <p class="text-xs font-bold uppercase text-slate-500">${label}</p>
+                    <div class="mt-2 flex items-baseline gap-1">
+                        <span class="text-2xl font-black text-grid-ink">${summary[key] ?? 0}</span>
+                        <span class="text-xs font-bold text-slate-400">${unit}</span>
+                    </div>
+                </article>
+            `).join('');
+
+            healthBadge.textContent = summary.health || 'Ready';
+            healthBadge.className = `rounded-full px-4 py-2 text-sm font-bold ${summary.critical_hours ? 'status-critical' : summary.warning_hours ? 'status-warning' : 'status-normal'}`;
+
+            document.getElementById('localInsight').innerHTML = `
+                <p class="font-bold text-grid-ink">${summary.health}</p>
+                <p class="mt-2">${summary.insight}</p>
+                <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                    <div class="rounded-md bg-white p-3"><p class="text-lg font-black text-emerald-700">${summary.normal_hours}</p><p class="text-xs text-slate-500">Normal</p></div>
+                    <div class="rounded-md bg-white p-3"><p class="text-lg font-black text-amber-700">${summary.warning_hours}</p><p class="text-xs text-slate-500">Warning</p></div>
+                    <div class="rounded-md bg-white p-3"><p class="text-lg font-black text-red-700">${summary.critical_hours}</p><p class="text-xs text-slate-500">Critical</p></div>
+                </div>
+            `;
+        }
+
+        function renderTable(rows = currentRows) {
+            const query = searchInput.value.trim().toLowerCase();
+            const status = statusFilter.value;
+            const filtered = rows.filter(row => {
+                const matchesText = !query || `${row.Timestamp} ${row.Status}`.toLowerCase().includes(query);
+                const matchesStatus = status === 'All' || row.Status === status;
+                return matchesText && matchesStatus;
+            });
+
+            tableHead.innerHTML = `<tr>${currentColumns.map(column => `<th class="whitespace-nowrap px-3 py-3 font-black">${labels[column] || column}</th>`).join('')}</tr>`;
+            tableBody.innerHTML = filtered.map(row => `
+                <tr class="transition hover:bg-grid-soft">
+                    ${currentColumns.map(column => {
+                        if (column === 'Status') {
+                            return `<td class="whitespace-nowrap px-3 py-3"><span class="rounded-full px-2.5 py-1 text-xs font-black ${stateClass(row[column])}">${row[column]}</span></td>`;
+                        }
+                        const align = column === 'Timestamp' ? 'text-slate-700' : 'font-mono text-slate-700';
+                        return `<td class="whitespace-nowrap px-3 py-3 ${align}">${row[column] ?? ''}</td>`;
+                    }).join('')}
+                </tr>
+            `).join('');
+
+            tableMeta.textContent = `${filtered.length} rows displayed from ${rows.length} forecast hours`;
+        }
+
+        async function loadResults() {
+            tableBody.innerHTML = '<tr><td class="px-3 py-6 text-slate-500">Loading results...</td></tr>';
+            const response = await fetch('/api/loadflow_results');
+            const data = await response.json();
+            if (data.status !== 'success') throw new Error(data.message || 'Failed to load results');
+            currentRows = data.rows;
+            currentColumns = data.columns;
+            sourcePath.textContent = data.source;
+            renderMetrics(data.summary);
+            renderTable();
+        }
+
+        async function generateReport() {
+            generateBtn.disabled = true;
+            summaryHint.textContent = 'Analyzing forecast...';
+            reportOutput.innerHTML = '<div class="rounded-md bg-grid-soft p-4 text-sm text-slate-600">Generating report...</div>';
+            try {
+                const response = await fetch('/generate_report', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+                const data = await response.json();
+                if (data.status !== 'success') throw new Error(data.message || 'Report failed');
+                reportOutput.innerHTML = marked.parse(data.report);
+                summaryHint.textContent = 'Report generated';
+            } catch (error) {
+                reportOutput.innerHTML = `<div class="rounded-md bg-red-50 p-4 text-sm font-semibold text-red-700">${error.message}</div>`;
+                summaryHint.textContent = 'Report unavailable';
+            } finally {
+                generateBtn.disabled = false;
+            }
+        }
+
+        searchInput.addEventListener('input', () => renderTable());
+        statusFilter.addEventListener('change', () => renderTable());
+        generateBtn.addEventListener('click', generateReport);
+        refreshBtn.addEventListener('click', () => loadResults().catch(error => {
+            tableBody.innerHTML = `<tr><td class="px-3 py-6 text-red-700">${error.message}</td></tr>`;
+        }));
+
+        loadResults().catch(error => {
+            sourcePath.textContent = 'Result file unavailable';
+            tableBody.innerHTML = `<tr><td class="px-3 py-6 text-red-700">${error.message}</td></tr>`;
+        });
+    </script>
+</body>
+</html>

@@ -4,3 +4,6 @@ pandas
 numpy
 scikit-learn
 matplotlib
+flask
+python-dotenv
+google-generativeai
