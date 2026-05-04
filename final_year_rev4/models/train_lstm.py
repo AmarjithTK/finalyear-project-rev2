@@ -13,13 +13,16 @@ from sklearn.metrics import (
 )
 
 # --- 1. Configurations ---
-DATA_FILE = "unified_microgrid_24h_results.csv"
+DATA_FILE = "../datasets/unified_microgrid_24h_results.csv"
 SEQ_LENGTH = 24  # Use 24 hours of history to predict the next hour
-BATCH_SIZE = 32
-HIDDEN_SIZE = 64
-NUM_LAYERS = 2
-EPOCHS = 30
-LEARNING_RATE = 0.001
+BATCH_SIZE = 64
+HIDDEN_SIZE = 16
+NUM_LAYERS = 1
+EPOCHS = 8
+LEARNING_RATE = 0.0008
+
+torch.manual_seed(42)
+np.random.seed(42)
 
 # --- 2. Load Data ---
 print("Loading dataset...")
@@ -29,18 +32,14 @@ df['Timestamp'] = pd.to_datetime(df['Timestamp'])
 # Ensure chronological order
 df = df.sort_values(by='Timestamp').reset_index(drop=True)
 
-# Input features (Weather and Time)
+# Input features (Weather)
 features = ['Hour', 'Temperature_C', 'Humidity_pct', 'Wind_Speed_ms', 'Cloud_Cover_pct', 'Solar_Irradiance_Wm2']
 
-# Target variables to predict (Full Grid state, Load, Gen, Voltages, Loadings, Losses)
+# Target variables to predict (Generation and Loads)
 targets = [
-    'Solar_MW', 'Wind_MW', 'Total_Load_MW',
-    'Grid_Import_MW', 'Grid_Import_MVAR',
-    'V_Sub_650', 'V_Split_632', 'V_Solar_633', 'V_Wind_675', 
-    'V_Res_634', 'V_Ind_671', 'V_Com_684', 'V_Crit_692', 
-    'V_Min_pu', 'V_Max_pu',
-    'L_Main_650_632_pct', 'L_IndWind_632_671_pct', 'L_Solar_632_633_pct', 'Max_Line_Loading_pct',
-    'Total_Loss_MW', 'Total_Loss_MVAR'
+    'Solar_MW', 'Wind_MW',
+    'Residential_Load_MW', 'Commercial_Load_MW', 
+    'Industrial_Load_MW', 'Critical_Load_MW'
 ]
 
 print(f"Dataset shape: {df.shape}")
@@ -145,7 +144,7 @@ criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
 # --- 6. Training Loop ---
-print("Starting training (epochs)...")
+print("Starting compact LSTM baseline training (reduced capacity)...")
 for epoch in range(EPOCHS):
     model.train()
     train_loss = 0
