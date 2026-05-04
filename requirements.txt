@@ -3,7 +3,12 @@ torch
 pandas
 numpy
 scikit-learn
+joblib
 matplotlib
 flask
 python-dotenv
 google-generativeai
+xgboost
+opendssdirect.py
+dss-python
+tensorflow
