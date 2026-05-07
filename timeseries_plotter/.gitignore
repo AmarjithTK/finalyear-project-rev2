@@ -1,0 +1,44 @@
+# Ignore all __pycache__ everywhere
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*$py.class
+
+# Ignore virtual environments anywhere
+**/venv/
+**/.venv/
+**/env/
+**/ENV/
+
+# Ignore build and distribution
+**/build/
+**/dist/
+**/*.egg-info/
+
+# Ignore IDE junk
+**/.idea/
+**/.vscode/
+
+# Jupyter
+**/.ipynb_checkpoints/
+
+# OS garbage
+.DS_Store
+Thumbs.db
+
+# Flask specific: instance folders, logs
+instance/
+**/instance/
+*.log
+
+# Cache dirs anywhere
+**/.cache/
+**/__pypackages__/
+
+# User uploads (if they are runtime-generated)
+uploads/*
+!uploads/.gitkeep
+
+# Generated plots
+plots/*
+!plots/.gitkeep

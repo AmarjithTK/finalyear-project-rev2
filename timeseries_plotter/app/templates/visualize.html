@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Columns - TimeSeries Plotter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <span>📊</span> TimeSeries Plotter
+        </div>
+        <div class="nav-links">
+            <a href="{{ url_for('app.index') }}">Home</a>
+            <a href="#about">About</a>
+            <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                <svg id="lightIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M12 17.5C14.7614 17.5 17 15.2614 17 12.5C17 9.73858 14.7614 7.5 12 7.5C9.23858 7.5 7 9.73858 7 12.5C7 15.2614 9.23858 17.5 12 17.5ZM12 1.5V3.5M12 21.5V23.5M23 12.5H21M3 12.5H1M20.4853 4.01472L19.071 5.42893M4.92893 19.5711L3.51472 20.9853M20.4853 20.9853L19.071 19.5711M4.92893 5.42893L3.51472 4.01472" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <svg id="darkIcon" style="display: none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M21.64 13.24A9 9 0 1110.76 2.36a7.5 7.5 0 0010.88 10.88z" fill="currentColor"/>
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>Configure Your Plot</h1>
+            <p class="subtitle">Select the columns you want to visualize</p>
+        </div>
+
+        <div class="selection-section">
+            <form action="{{ url_for('app.visualize', filename=filename) }}" method="post">
+                <div class="form-group">
+                    <label for="x_column">
+                        <span>📈</span> X-Axis (Time Column)
+                    </label>
+                    <select name="x_column" id="x_column" required>
+                        <option value="" disabled selected>Choose a column...</option>
+                        {% for col in columns %}
+                        <option value="{{ col }}">{{ col }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="y_column">
+                        <span>📊</span> Y-Axis (Value Column)
+                    </label>
+                    <select name="y_column" id="y_column" required>
+                        <option value="" disabled selected>Choose a column...</option>
+                        {% for col in columns %}
+                        <option value="{{ col }}">{{ col }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn-primary">Generate Visualization</button>
+            </form>
+            
+            <div class="actions">
+                <a href="{{ url_for('app.index') }}" class="btn-secondary">← Upload New File</a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="credits">
+            Made by <strong>Amarjith T K</strong>
+        </div>
+        <div class="institution">
+            BTech Final Year Project, National Institute of Technology Calicut
+        </div>
+    </footer>
+
+    <script>
+        // Theme Toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const lightIcon = document.getElementById('lightIcon');
+        const darkIcon = document.getElementById('darkIcon');
+        const html = document.documentElement;
+
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', currentTheme);
+        updateThemeIcon(currentTheme);
+
+        themeToggle.addEventListener('click', () => {
+            const theme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            updateThemeIcon(theme);
+        });
+
+        function updateThemeIcon(theme) {
+            if (theme === 'dark') {
+                lightIcon.style.display = 'none';
+                darkIcon.style.display = 'block';
+            } else {
+                lightIcon.style.display = 'block';
+                darkIcon.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

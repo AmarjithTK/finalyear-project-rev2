@@ -59,6 +59,11 @@ def create_sequences(data, seq_length, num_features, num_targets):
         y.append(data[i + seq_length, -num_targets:]) # Only predict targets
     return np.array(X), np.array(y)
 
+
+
+
+    
+
 def calculate_metrics(actuals, predictions):
     epsilon = 1e-8
     non_zero_actuals = np.abs(actuals) > epsilon

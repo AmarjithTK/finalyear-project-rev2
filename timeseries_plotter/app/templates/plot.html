@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plot View - Microgrid Visualizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Microgrid Data Visualization</h1>
+        
+        <div class="plot-container">
+            <iframe src="{{ url_for('static', filename='../plots/' + filename) }}" 
+                    width="100%" 
+                    height="600px" 
+                    frameborder="0">
+            </iframe>
+        </div>
+        
+        <div class="actions">
+            <a href="{{ url_for('app.index') }}" class="btn">Upload Another File</a>
+        </div>
+    </div>
+</body>
+</html>
