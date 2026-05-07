@@ -17,6 +17,13 @@ venv/
 env/
 .venv/
 ENV/
+myenv/
+
+# Environment files
+.env
+.env.*
+*.env
+*.env.*
 
 # Jupyter Notebook
 .ipynb_checkpoints/
@@ -41,6 +48,20 @@ htmlcov/
 # OS junk
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Windows alternate data streams
+*:Zone.Identifier
+
+# Editor/backup/temp files
+*~
+*.swp
+*.swo
+*.tmp
+*.bak
+*.orig
+*.rej
 
 # Logs
 *.log
+
