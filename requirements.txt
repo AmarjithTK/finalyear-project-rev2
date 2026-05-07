@@ -11,4 +11,4 @@ google-generativeai
 xgboost
 opendssdirect.py
 dss-python
-tensorflow
+

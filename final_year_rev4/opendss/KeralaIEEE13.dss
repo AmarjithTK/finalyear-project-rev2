@@ -89,13 +89,13 @@ New Load.Crit_C Bus1=692LV.3 phases=1 conn=wye kv=0.24 kw=134 kvar=40  model=1
 
 ! ============================================================
 ! RENEWABLE DER
-! Solar PV = 1.2 MW at Bus 633 (11kV)
-! Wind    = 0.8 MW at Bus 675 (11kV)
+! Solar PV = 1.2 MW at Bus 675 (11kV)
+! Wind    = 0.8 MW at Bus 680 (11kV)
 ! ============================================================
-New PVSystem.SolarPV phases=3 bus1=633 kv=11 kva=1200 pmpp=1200 irradiance=1.0
+New PVSystem.SolarPV phases=3 bus1=675 kv=11 kva=1200 pmpp=1200 irradiance=1.0
 ~ %cutin=0.1 %cutout=0.1
 
-New Generator.WindGen phases=3 bus1=675 kv=11 kw=800 kvar=100 model=1
+New Generator.WindGen phases=3 bus1=680 kv=11 kw=800 kvar=100 model=1
 ! ~ %r=0 %x=0.1
 
 ! ============================================================

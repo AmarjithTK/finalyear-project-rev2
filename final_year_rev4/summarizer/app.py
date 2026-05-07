@@ -16,19 +16,26 @@ LOADFLOW_RESULTS_CSV = os.path.abspath(
 DISPLAY_COLUMNS = [
     "Timestamp",
     "Total_Load_Predicted_MW",
+    "Solar_Predicted_MW",
+    "Wind_Predicted_MW",
     "Total_DER_Predicted_MW",
     "Grid_Import_MW",
     "System_Loss_MW",
     "V_Min_pu",
     "V_Max_pu",
     "Max_Line_Loading_pct",
-    "V_Sub_650_pu",
+    "V_Grid_650_pu",
     "V_Split_632_pu",
     "V_Res_634_pu",
     "V_Ind_671_pu",
+    "V_Com_684_pu",
+    "V_Crit_692_pu",
+    "V_Solar_675_pu",
+    "V_Wind_680_pu",
     "L_Main_650_632_pct",
     "L_Ind_632_671_pct",
-    "L_Solar_632_633_pct",
+    "L_Solar_671_675_pct",
+    "L_Wind_675_680_pct",
 ]
 
 V_MIN_THRESHOLD = 0.95

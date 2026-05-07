@@ -16,7 +16,7 @@ REQUIRED_LOADS = [
     "Ind_A", "Ind_B", "Ind_C",
     "Crit_A", "Crit_B", "Crit_C",
 ]
-REQUIRED_LINES = ["L650_632", "L632_671", "L632_633"]
+REQUIRED_LINES = ["L650_632", "L632_671", "L671_675", "L675_680"]
 REQUIRED_PVS = ["SolarPV"]
 REQUIRED_GENERATORS = ["WindGen"]
 SOLAR_RATING_KW = 1200.0
@@ -136,10 +136,11 @@ def run_predicted_loadflow():
         voltages = get_all_voltages()
         
         # 6. Extract Line Flows & Loading
-        p_L650_632, q_L650_632, ld_L650_632 = get_line_flow("L650_632") # Main Feeder
-        p_L632_671, q_L632_671, ld_L632_671 = get_line_flow("L632_671") # Industrial/Wind Split
-        p_L632_633, q_L632_633, ld_L632_633 = get_line_flow("L632_633") # Solar PV Branch
-        max_line_loading = max(ld_L650_632, ld_L632_671, ld_L632_633)
+        p_L650_632, q_L650_632, ld_L650_632 = get_line_flow("L650_632") # Grid feeder
+        p_L632_671, q_L632_671, ld_L632_671 = get_line_flow("L632_671") # Industrial branch
+        p_L671_675, q_L671_675, ld_L671_675 = get_line_flow("L671_675") # Solar PV branch
+        p_L675_680, q_L675_680, ld_L675_680 = get_line_flow("L675_680") # Wind branch
+        max_line_loading = max(ld_L650_632, ld_L632_671, ld_L671_675, ld_L675_680)
         
         # 7. Extract System Losses & Grid Import/Export
         losses_w, losses_var = dss.Circuit.Losses()
@@ -154,18 +155,25 @@ def run_predicted_loadflow():
         rec = {
             "Timestamp": row['Timestamp'],
             "Total_Load_Predicted_MW": res_kw/1000 + com_kw/1000 + ind_kw/1000 + crit_kw/1000,
+            "Solar_Predicted_MW": solar_kw/1000,
+            "Wind_Predicted_MW": wind_kw/1000,
             "Total_DER_Predicted_MW": solar_kw/1000 + wind_kw/1000,
             "Grid_Import_MW": round(grid_import_mw, 4),
             "System_Loss_MW": round(losses_w / 1_000_000, 4),
-            "V_Sub_650_pu": voltages.get("650", 0.0),
+            "V_Grid_650_pu": voltages.get("650", 0.0),
             "V_Split_632_pu": voltages.get("632", 0.0),
             "V_Res_634_pu": voltages.get("634", 0.0),
             "V_Ind_671_pu": voltages.get("671", 0.0),
+            "V_Com_684_pu": voltages.get("684", 0.0),
+            "V_Crit_692_pu": voltages.get("692", 0.0),
+            "V_Solar_675_pu": voltages.get("675", 0.0),
+            "V_Wind_680_pu": voltages.get("680", 0.0),
             "V_Min_pu": v_min,
             "V_Max_pu": v_max,
             "L_Main_650_632_pct": ld_L650_632,
             "L_Ind_632_671_pct": ld_L632_671,
-            "L_Solar_632_633_pct": ld_L632_633,
+            "L_Solar_671_675_pct": ld_L671_675,
+            "L_Wind_675_680_pct": ld_L675_680,
             "Max_Line_Loading_pct": max_line_loading
         }
         results.append(rec)
