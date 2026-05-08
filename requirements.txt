@@ -11,4 +11,5 @@ google-generativeai
 xgboost
 opendssdirect.py
 dss-python
-
+seaborn
+plotly

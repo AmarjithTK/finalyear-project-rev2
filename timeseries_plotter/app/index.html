@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Predicted Load-Flow Results</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+</head>
+<body class="bg-slate-50 text-slate-900" style="font-family: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;">
+  <header class="bg-white border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-6 py-7">
+      <h1 class="text-2xl font-semibold tracking-tight">Predicted Load-Flow Results</h1>
+      <p class="text-sm text-slate-600">Clean table view from OpenDSS prediction output</p>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 py-6">
+    <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600 mb-3">
+      <div class="bg-white border border-slate-200 rounded px-3 py-1" id="row-count">Rows: ...</div>
+      <div class="text-slate-500">Source: final_year_rev4/proposed_model_results/predicted_loadflow_results.csv</div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded overflow-auto shadow-sm">
+      <div class="text-slate-500 text-center py-4" id="loading">Loading CSV...</div>
+      <table id="data-table" aria-live="polite" class="min-w-full text-xs border-collapse" style="display:none;">
+        <thead class="bg-slate-100 sticky top-0"></thead>
+        <tbody class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer class="text-center text-xs text-slate-500 py-5">Prepared for presentation use (PPT-ready)</footer>
+
+  <script>
+    const CSV_PATH = "../../final_year_rev4/proposed_model_results/predicted_loadflow_results.csv";
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let cell = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const next = text[i + 1];
+
+        if (char === '"') {
+          if (inQuotes && next === '"') {
+            cell += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          row.push(cell);
+          cell = "";
+        } else if ((char === '\n' || char === '\r') && !inQuotes) {
+          if (cell.length || row.length) {
+            row.push(cell);
+            rows.push(row);
+            row = [];
+            cell = "";
+          }
+        } else {
+          cell += char;
+        }
+      }
+
+      if (cell.length || row.length) {
+        row.push(cell);
+        rows.push(row);
+      }
+
+      return rows;
+    }
+
+    function isNumeric(value) {
+      return value !== "" && !Number.isNaN(Number(value));
+    }
+
+    async function loadCsv() {
+      const loading = document.getElementById("loading");
+      const table = document.getElementById("data-table");
+      const thead = table.querySelector("thead");
+      const tbody = table.querySelector("tbody");
+      const rowCount = document.getElementById("row-count");
+
+      try {
+        const res = await fetch(CSV_PATH);
+        if (!res.ok) {
+          throw new Error(`CSV not found: ${res.status}`);
+        }
+
+        const text = await res.text();
+        const rows = parseCsv(text).filter(r => r.length && r.some(v => v !== ""));
+        if (!rows.length) {
+          throw new Error("CSV is empty");
+        }
+
+        const header = rows[0];
+        const data = rows.slice(1);
+        const exclude = new Set([
+          "Total_Load_Predicted_MW",
+          "Solar_Predicted_MW",
+          "Wind_Predicted_MW",
+          "Total_DER_Predicted_MW",
+          "Grid_Import_MW"
+        ]);
+        const keepIndexes = header
+          .map((name, idx) => ({ name, idx }))
+          .filter(item => !exclude.has(item.name))
+          .map(item => item.idx);
+        const filteredHeader = keepIndexes.map(idx => header[idx]);
+
+        thead.innerHTML = "<tr>" + filteredHeader.map(h => `<th class=\"text-left font-semibold px-2 py-1.5 border-b border-slate-200 whitespace-nowrap\">${h}</th>`).join("") + "</tr>";
+        tbody.innerHTML = data.map(r => {
+          const cells = keepIndexes.map(idx => {
+            const v = r[idx] ?? "";
+            const cls = isNumeric(v) ? "text-right tabular-nums" : "";
+            return `<td class=\"px-2 py-1.5 whitespace-nowrap ${cls}\">${v}</td>`;
+          }).join("");
+          return `<tr>${cells}</tr>`;
+        }).join("");
+
+        rowCount.textContent = `Rows: ${data.length}`;
+        loading.style.display = "none";
+        table.style.display = "table";
+      } catch (err) {
+        loading.className = "text-red-600 text-center py-4";
+        loading.textContent = err.message;
+      }
+    }
+
+    loadCsv();
+  </script>
+</body>
+</html>
