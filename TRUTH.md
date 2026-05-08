@@ -1,0 +1,1 @@
+Nothing bypasses truth.md
